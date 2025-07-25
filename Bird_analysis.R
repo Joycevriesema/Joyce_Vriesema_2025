@@ -48,7 +48,7 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
   summarise(total_count= sum(count))|>
   filter(species_name=="Pied kingfisher")
 
-# graphs
+# old graphs
 ggplot(data_bird |> dplyr::filter(species_name=="Pied kingfisher"))+
   aes(x= as.factor(date), y= total_count, fill= transect_ID)+
   geom_bar(stat="identity", position = "dodge")
