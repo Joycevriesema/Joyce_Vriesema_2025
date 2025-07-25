@@ -133,7 +133,7 @@ ggplot(school_pap, aes( x= distance_to_river_mouth, y= total_count, fill= river)
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))
-)
+
 
 #### model for small schools in tree transects ####
 school_tree <- fish_data|>
