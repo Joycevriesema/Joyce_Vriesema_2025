@@ -48,20 +48,18 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
   summarise(total_count= sum(count))|>
   filter(species_name=="Pied kingfisher")
 
-# old graphs
-ggplot(data_bird |> dplyr::filter(species_name=="Pied kingfisher"))+
-  aes(x= as.factor(date), y= total_count, fill= transect_ID)+
+# old exploratory graphs
+ggplot(data_bird, aes(x= as.factor(date), y= total_count, fill= transect_ID))+
   geom_bar(stat="identity", position = "dodge")
 
-ggplot(data_bird |> dplyr::filter(species_name=="Pied kingfisher"))+
-  aes( x= transect_ID, y= total_count, fill= transect_ID)+
+ggplot(data_bird, aes(x= transect_ID, y= total_count, fill= transect_ID))+
   geom_boxplot()
 
 # boxplot pied kingfishers
 ggplot(data_bird, aes(x = distance_to_river_mouth, y = total_count, fill = river)) +
   geom_boxplot(
-    color = "black",       # Black outline for contrast
-    outlier.shape = 21,    # Circle outliers
+    color = "black",    
+    outlier.shape = 21,    
     outlier.fill = "black",
     outlier.color = "black",
     outlier.size = 2
