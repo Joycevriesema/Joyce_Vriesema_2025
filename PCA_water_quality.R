@@ -42,13 +42,21 @@ data_water <- read.csv("data_water.csv") |>
          ))
 
 
+# row 377 and 698 suggest outliers
+# 377 has a very high turbidity, very low conductivity and low TDS, depth 0.46
+# 698 TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface, point 696 is 0.81 meter and point 697 is 0.47 and 698 also 0.47 so maybe the probe was drawn a bit to the surface
+# remove these two outliers from the data set, as these might nog be representative measurements
 
 pca_input <- data_water |>
+  dplyr::slice(c(-377,-698)) |>
   dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
   filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
 
 ##### explore the correlations among the environmental factors in a panel pairs plot
 psych::pairs.panels(pca_input,smooth=F,ci=T,ellipses=F,stars=T,method="pearson")
+# very strong relation between conductivity and TDS
+
+
 
 pca_result <- prcomp(pca_input,center=T, scale. = TRUE)
 pca_result
