@@ -167,9 +167,18 @@ loadings$varname <- dplyr::recode(
   "temp" = "temperature",
   "HDO_sat" = "HDO_saturation"
 )
+loadings$nudge_x <- 0
+loadings$nudge_y <- 0
 
+loadings$nudge_x[loadings$varname == "TDS"] <- 0.5
+loadings$nudge_x[loadings$varname == "conductivity"] <- -0.3
+loadings$nudge_x[loadings$varname == "turbidity"] <- -0.3
+loadings$nudge_x[loadings$varname == "temperature"] <- 0.1
+loadings$nudge_x[loadings$varname == "HDO"] <- 0.4
+loadings$nudge_x[loadings$varname == "HDO_saturation"] <- 0.4
+loadings$nudge_y[loadings$varname == "HDO_saturation"] <- -0.1
 # Scale arrows for visibility (optional)
-arrow_scale <- 4 # adjust this if arrows too small/big
+arrow_scale <- 4.5 # adjust this if arrows too small/big
 loadings$PC1 <- loadings$PC1 * arrow_scale
 loadings$PC2 <- loadings$PC2 * arrow_scale
 
@@ -177,23 +186,25 @@ loadings$PC2 <- loadings$PC2 * arrow_scale
 library(ggplot2)
 
 ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
-  geom_point(size = 2) +
+  geom_point(size = 1.5, alpha= 0.9) +
   # Add arrows
   geom_segment(data = loadings,
                aes(x = 0, y = 0, xend = PC1, yend = PC2),
                arrow = arrow(length = unit(0.25, "cm")),
-               color = "black", linewidth = 0.6) +
+               color = "black", linewidth = 0.55) +
   # Add variable labels
   geom_text_repel(
     data = loadings,
     aes(x = PC1, y = PC2, label = varname),
     color = "black",
     size = 3.5,
-    force_pull= 0.5,
+    nudge_x = loadings$nudge_x,
+    nudge_y = loadings$nudge_y,
+    force_pull= 0.3,
     #segment.color = "black",     # color of the connector line
     segment.size = 0.2,           # thickness of connector line
-    box.padding = 0.5,            # space around text box to avoid overlap
-    point.padding = 0.1,          # space around arrow tip point
+    box.padding = 0.4,            # space around text box to avoid overlap
+    point.padding = 0.2,          # space around arrow tip point
     min.segment.length = 0        # show segment even if very short
   )+
   labs(
@@ -204,7 +215,6 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
   coord_fixed() +
   theme_minimal() +
   scale_color_manual(values = c("#332288", "#44AA99", "#DDCC77", "#AA4499", "#88CCEE"))
-
 
 
 
