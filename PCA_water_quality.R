@@ -3,7 +3,7 @@ rm(list = ls())
 # load libraries
 library(dplyr)
 library(vegan) # multivariate analysis of ecological community data 
-library(psych) # usefull for panel plots of multivariate datasets
+library(psych) # for panel plots of multivariate datasets
 library(tidyverse)
 
 # load data_water
@@ -42,21 +42,16 @@ data_water <- read.csv("data_water.csv") |>
          ))
 
 
-##### explore the correlations among the environmental factors in a panel pairs plot
+# explore the correlations among the environmental factors in a panel pairs plot
 psych::pairs.panels(pca_input,smooth=F,ci=T,ellipses=F,stars=T,method="pearson")
-# very strong relation between conductivity and TDS
-
-
-# points 377 and 698 suggest outliers
-# point 377 has a very high turbidity, very low conductivity and low TDS, depth 0.46
-# point 377 was recorded at 11:07:58, which coincides with the exact start time of the transect, seconds moved = 2 and meters moved = 2  suggesting the multiprobe may not yet have been fully submerged. The shallow depth (0.46m) supports this assumption. Partial submersion may also explain the unusually high HDO saturation and turbidity, as the sensors may have measured surface water or even been partially exposed to air.
-
-# 698 TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface, point 696 is 0.81 meter and point 697 is 0.47 and 698 also 0.47 so maybe the probe was drawn a bit to the surface
-# remove these two outliers from the data set, as these might nog be representative measurements
+# very strong relation between conductivity and TDS, one on one correlation
+# HDO and HDO_sat one on one correlation
+# strong negative correlation between ORP and HDO & HDO_sat
+# strong positive correlation between pH and HDO
+# strong negative correlation between pH and ORP
 
 # PCA with all data
 pca_input <- data_water |>
-  dplyr::slice(c(-377,-698)) |>
   dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
   filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
 
@@ -64,9 +59,27 @@ pca_result <- prcomp(pca_input,center=T, scale. = TRUE)
 pca_result
 summary(pca_result)
 
-biplot(pca_result,xlab="PC1 48%",ylab="PC2 28%")
+biplot(pca_result,xlab="PC1 48%",ylab="PC2 25%")
 
-# PCA with average data
+# points 376 and 697 suggest outliers
+# point 376 has a very high turbidity, very low conductivity and low TDS, depth 0.46
+# point 376 was recorded at 11:07:58, which coincides with the exact start time of the transect, seconds moved = 2 and meters moved = 2  suggesting the multiprobe may not yet have been fully submerged. The shallow depth (0.46m) supports this assumption. Partial submersion may also explain the unusually high HDO saturation and turbidity, as the sensors may have measured surface water or even been partially exposed to air.
+
+# point 697: TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface, point 696 is 0.81 meter and point 697 is 0.47 and 698 also 0.47 so maybe the probe was drawn a bit to the surface
+# remove these two outliers from the data set, as these might nog be representative measurements
+pca_input2 <- data_water |>
+  dplyr::slice(c(-377,-698)) |>
+  dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
+  filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
+
+pca_result <- prcomp(pca_input2,center=T, scale. = TRUE)
+pca_result
+summary(pca_result)
+
+biplot(pca_result, xlab = "PC1 (48%)", ylab = "PC2 (28%)")
+# now the plot looks better, still there seems to be a cluster of so points to the right
+
+# try PCA with averaged data
 pca_input_avg <- data_water |>
   dplyr::slice(c(-377, -698)) |>
   dplyr::filter(if_all(c(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS),
@@ -93,3 +106,140 @@ pca_result_avg
 summary(pca_result_avg)
 
 biplot(pca_result_avg,xlab="PC1 53%",ylab="PC2 36%")
+# so the raw data explains 48+25= 73% of all variation
+# averaged data explains 53+36= 89% of all variation
+
+# comapring the two biplots the arrows of temp, turb, cond and TDS seem to change direction, so try o find out why this is
+
+# Compute correlation matrices
+cor_raw <- cor(pca_input2, use = "pairwise.complete.obs")
+cor_avg <- cor(pca_input_avg %>% dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS), use = "pairwise.complete.obs")
+
+# Convert matrices to long format data frames
+cor_raw_df <- as.data.frame(as.table(cor_raw)) %>%
+  rename(Var1 = Var1, Var2 = Var2, Correlation_raw = Freq)
+
+cor_avg_df <- as.data.frame(as.table(cor_avg)) %>%
+  rename(Var1 = Var1, Var2 = Var2, Correlation_avg = Freq)
+
+# Join on Var1 and Var2
+cor_compare <- left_join(cor_raw_df, cor_avg_df, by = c("Var1", "Var2")) %>%
+  arrange(Var1, Var2)
+
+# View table
+print(cor_compare_unique)
+# temp vs turb changes from 0.14 (weak positive) in raw to 0.51 (moderate positive) in averaged.
+# ORP vs turb flips from 0.21 (positive) in raw to -0.15 (negative) in averaged.
+# cond vs turb increases from 0.41 (moderate) in raw to 0.85 (very strong positive) in averaged.
+# cond vs temp flips from nearly zero (-0.007) in raw to 0.56 (moderate positive) in averaged.
+# pH vs turb flips from -0.16 (weak negative) in raw to 0.24 (weak positive) in averaged.
+# TDS vs temp flips from -0.007 in raw to 0.56 (moderate positive) in averaged.
+# TDS vs turb rises from 0.41 (moderate) in raw to 0.85 (very strong positive) in averaged
+# cond vs pH flips from -0.19 (negative) in raw to +0.04 (near zero positive) in averaged.
+# HDO vs turb shifts from -0.07 (near zero) in raw to 0.24 (weak positive) in averaged.
+# HDO_sat vs turb shifts from -0.05 in raw to 0.27 in averaged.
+
+# the averaging changed correlation and might hide variability 
+# I want to use the clustering of the parameters for factors of water aeration and water clarity so it might be better to have enough variability
+
+
+
+
+
+
+
+# Step 1: Slice, filter, and keep track of original row numbers
+data_filtered <- data_water %>%
+  slice(-377, -698) %>%
+  filter(if_all(c(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS), ~ !is.na(.) & !is.infinite(.)))
+
+# Get original row indices corresponding to filtered data
+rows_to_keep <- as.numeric(rownames(data_filtered))
+
+# Step 2: Prepare numeric matrix for PCA
+pca_input2 <- data_filtered |>
+  dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)
+
+# Step 3: Run PCA
+pca_result <- prcomp(pca_input2, center = TRUE, scale. = TRUE)
+
+# Step 4: Extract habitat vector aligned with PCA points
+habitat_vector <- data_water$habitat_detailed_2[rows_to_keep]
+
+# Step 5: Prepare data frame for plotting
+scores <- as.data.frame(pca_result$x)
+scores$habitat <- habitat_vector
+
+# Step 6: Plot PCA colored by habitat
+ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
+  geom_point(size = 3) +
+  labs(
+    title = "PCA plot colored by habitat",
+    x = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100), "%)"),
+    y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)")
+  ) +
+  theme_minimal() +
+  coord_fixed() +
+  scale_color_manual(values = c("#1f77b4", "#ff7f0e", "red", "green","purple"))
+
+
+
+
+library(dplyr)
+library(ggplot2)
+library(ggrepel)
+
+# Data filtering and PCA (same as before)
+data_filtered <- data_water %>%
+  slice(-377, -698) %>%
+  filter(if_all(c(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS), ~ !is.na(.) & !is.infinite(.)))
+
+rows_to_keep <- as.numeric(rownames(data_filtered))
+
+pca_input2 <- data_filtered %>%
+  dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)
+
+pca_result <- prcomp(pca_input2, center = TRUE, scale. = TRUE)
+
+habitat_vector <- data_water$habitat_detailed_2[rows_to_keep]
+
+scores <- as.data.frame(pca_result$x)
+scores$habitat <- habitat_vector
+
+# Get standard deviations (square roots of eigenvalues)
+std_dev <- pca_result$sdev
+
+# Loadings (variable vectors)
+loadings <- as.data.frame(pca_result$rotation[, 1:2])
+loadings$varnames <- rownames(loadings)
+
+# Scale loadings by standard deviations (this matches base biplot scale)
+# This step maps variable loadings into PCA score space (like arrows in biplot)
+loadings <- loadings %>%
+  mutate(
+    PC1 = PC1 * std_dev[1],
+    PC2 = PC2 * std_dev[2]
+  )
+
+# Now plot everything with ggplot2
+ggplot() +
+  geom_point(data = scores, aes(x = PC1, y = PC2, color = habitat), size = 3) +
+  geom_segment(data = loadings, aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               arrow = arrow(length = unit(0.3, "cm")), color = "black") +
+  geom_text_repel(data = loadings, aes(x = PC1, y = PC2, label = varnames),
+                  color = "black", size = 5) +
+  labs(
+    title = "PCA Biplot with Original Arrow Scaling",
+    x = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100), "%)"),
+    y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)")
+  ) +
+  theme_minimal() +
+  coord_fixed() +
+  scale_color_manual(values = c("#1f77b4", "#ff7f0e", "red", "green","yellow"))
+
+
+
+
+
+
+
