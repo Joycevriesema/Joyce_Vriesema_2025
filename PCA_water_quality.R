@@ -220,7 +220,7 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
 
 
 
-# extract pca values and add as column to data water
+# extract PCA values and add as column to data water
 # extract PCA scores
 scores <- as.data.frame(pca_result$x)
 
@@ -279,3 +279,15 @@ ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
     panel.border = element_rect(color = "black", size = 1, fill = NA),
     plot.margin = margin(10, 10, 10, 10)
   )
+
+# anova PC1
+model_pc1 <- lm(PC1 ~ habitat_main + river + distance_to_river_mouth, data = pca_with_meta)
+anova(model_pc1)
+summary(model_pc1)
+
+# anova PC2
+model_pc2 <- lm(PC2 ~ habitat_main + river + distance_to_river_mouth, data = pca_with_meta)
+anova(model_pc2)
+summary(model_pc2)
+
+# check assumptions
