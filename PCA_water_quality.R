@@ -177,6 +177,7 @@ loadings$nudge_x[loadings$varname == "temperature"] <- 0.1
 loadings$nudge_x[loadings$varname == "HDO"] <- 0.4
 loadings$nudge_x[loadings$varname == "HDO_saturation"] <- 0.4
 loadings$nudge_y[loadings$varname == "HDO_saturation"] <- -0.1
+loadings$nudge_y[loadings$varname == "ORP"] <- -0.1
 # Scale arrows for visibility (optional)
 arrow_scale <- 4.5 # adjust this if arrows too small/big
 loadings$PC1 <- loadings$PC1 * arrow_scale
@@ -191,7 +192,7 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
   geom_segment(data = loadings,
                aes(x = 0, y = 0, xend = PC1, yend = PC2),
                arrow = arrow(length = unit(0.25, "cm")),
-               color = "black", linewidth = 0.55) +
+               color = "black", linewidth = 0.5) +
   # Add variable labels
   geom_text_repel(
     data = loadings,
@@ -201,7 +202,7 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
     nudge_x = loadings$nudge_x,
     nudge_y = loadings$nudge_y,
     force_pull= 0.3,
-    #segment.color = "black",     # color of the connector line
+    segment.color = "black",     # color of the connector line
     segment.size = 0.2,           # thickness of connector line
     box.padding = 0.4,            # space around text box to avoid overlap
     point.padding = 0.2,          # space around arrow tip point
@@ -210,7 +211,8 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
   labs(
     title = "",
     x = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100), "%)"),
-    y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)")
+    y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)"),
+    color = "Habitat type"
   ) +
   coord_fixed() +
   theme_minimal() +
@@ -218,8 +220,62 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
 
 
 
+# extract pca values and add as column to data water
+# extract PCA scores
+scores <- as.data.frame(pca_result$x)
 
+# Step 5: Add metadata (e.g., habitat)
+meta <- data_water[rows_to_keep, ]  # Match the same rows
+pca_with_meta <- cbind(meta, scores)
 
+# plot PC1 which represents water aeration
+ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
+  geom_boxplot()+
+  facet_grid(~habitat_main)+
+  theme(text= element_text(size=14))+
+  labs(x= "Distance to river mouth", y= "Water aeration (PC1)")+
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"))+
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
 
-# extract pca values and add as column
-
+# plot PC2 which represents water clarity
+ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
+  geom_boxplot()+
+  facet_grid(~habitat_main)+
+  theme(text= element_text(size=14))+
+  labs(x= "Distance to river mouth", y= "Water clarity (PC2)")+
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"))+
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
