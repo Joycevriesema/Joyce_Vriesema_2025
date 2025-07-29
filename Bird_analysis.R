@@ -206,7 +206,7 @@ summary(m1)
 # try model without random effect
 m1a <- lm(birds_per_100m ~ habitat_main + river + distance_to_river_mouth, data = birds_meter_shoreline) 
 anova(m1a)
-# habitat type significannt effect on bird density
+# habitat type significant effect on bird density
 # river site significant effect on bird density
 # distance to river mouth significant effect on bird density
 summary(m1a)
@@ -218,8 +218,117 @@ summary(m1a)
 # compare models 
 anova(m1,m1a)
 # AIC of model m1 is much lower than m1a
-# p value <0.001 meaning transect_ID as a random effect improves the model fit,meaning there is meaningful variation in bird density between transects that cannot be captured by the fixed effects alone. 
+# p value <0.001 meaning transect_ID as a random effect improves the model fit,meaning there is meaningful variation in bird density between transects that cannot be captured by the fixed effects alone
 
+
+# pairwise comparisons for m1
+emm <- emmeans(m1, ~ distance_to_river_mouth)
+pairs(emm)
+# mouth significantly higher than mid
+# mouth not significantly higher than far
+# mid significantly lower than far
+
+# get letters
+cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
+letters_df <- as.data.frame(cld_dist)
+letters_df <- letters_df %>%
+  mutate(
+    y_pos = max(birds_meter_shoreline$birds_per_100m) * 1.05  # Adjust multiplier as needed for spacing
+  )
+
+
+ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
+  geom_boxplot(
+    color = "black",     
+    outlier.shape = 21,    
+    outlier.fill = "black",
+    outlier.color = "black",
+    outlier.size = 2
+  ) +
+  facet_grid(~ habitat_main) +
+  #scale_y_log10() +
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"
+  ))+
+  labs(
+    x = "Distance to river mouth",
+    y = "Count / 100 meter shoreline",
+    fill = "River"
+  ) +
+  geom_text(data = letters_df,
+            aes(x = distance_to_river_mouth, y = y_pos, label = .group),
+            color = "black",
+            size = 5,
+            fontface = "bold",
+            inherit.aes = FALSE)+
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# make plot with significance letters
+# plot bird counts per 100 meter shoreline
+ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
+  geom_boxplot(
+    color = "black",     
+    outlier.shape = 21,    
+    outlier.fill = "black",
+    outlier.color = "black",
+    outlier.size = 2
+  ) +
+  facet_grid(~ habitat_main) +
+  #scale_y_log10() +
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"
+  ))+
+  labs(
+    x = "Distance to river mouth",
+    y = "Count / 100 meter shoreline",
+    fill = "River"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
 
 #### model analysis papyrus transects old ####
 # use Poisson regression model to test whether the total count of Pied kingfishers differs significantly between transects within each habitat type
