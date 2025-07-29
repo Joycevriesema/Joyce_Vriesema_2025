@@ -5,6 +5,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyr)
 library(lme4)
+library(lmerTest)
 library(MASS)
 library(emmeans)
 
@@ -182,7 +183,45 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     plot.margin = margin(10, 10, 10, 10)
   )
 
-#### model analysis papyrus transects ####
+#### model analysis birds per meter shoreline ####
+# make factors 
+birds_meter_shoreline <- birds_meter_shoreline |>
+  mutate(
+    habitat_main = as.factor(habitat_main),
+    river = as.factor(river),
+    distance_to_river_mouth = factor(distance_to_river_mouth, levels = c("Mouth", "Mid", "Far")),  # set reference
+    transect_ID = as.factor(transect_ID)
+  )
+m1 <- lmer(birds_per_100m ~ habitat_main + river + distance_to_river_mouth + (1 | transect_ID), data = birds_meter_shoreline)
+anova(m1)
+# habitat type had a significant effect on bird densities **
+# river site does not have an affect on bird densities
+# distance to river mouth has a significant effect on bird densities *
+summary(m1)
+# Tree significant higher bird densities
+# mid distance to river mouth has significant lower bird density than mouth
+# far distance has not signficantly lower bird densities than mouth
+# variance between transects 
+
+# try model without random effect
+m1a <- lm(birds_per_100m ~ habitat_main + river + distance_to_river_mouth, data = birds_meter_shoreline) 
+anova(m1a)
+# habitat type significannt effect on bird density
+# river site significant effect on bird density
+# distance to river mouth significant effect on bird density
+summary(m1a)
+# Tree significant higher bird densities
+# river Robana significantly higher bird density than Robana
+# mid distance to river mouth has significant lower bird density than mouth
+# far distance has not signficantly lower bird densities than mouth
+
+# compare models 
+anova(m1,m1a)
+# AIC of model m1 is much lower than m1a
+# p value <0.001 meaning transect_ID as a random effect improves the model fit,meaning there is meaningful variation in bird density between transects that cannot be captured by the fixed effects alone. 
+
+
+#### model analysis papyrus transects old ####
 # use Poisson regression model to test whether the total count of Pied kingfishers differs significantly between transects within each habitat type
 # due to uneven number of the paired transect design it is only possible to compare within a habitat and not between habitats papyrus: n=6, trees: n=8
 
@@ -215,7 +254,7 @@ summary(nb_papyrus2)
 # distance far p***
 # river Robana not significant
 
-#### model analysis tree transects ####
+#### model analysis tree transects old ####
 
 # add visible tree volume
 # load data of tree measurements
