@@ -9,7 +9,11 @@ library(tidyr)
 library(vegan)
 library(lme4)
 library(emmeans)
+library(glmmTMB) # package for negative binomial model including random effects
 library(MASS) # this packacge I used for a negative binomial model, because of overdispersion
+
+install.packages("glmmTMB", type = "source")
+
 
 fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=946923967&single=true&output=csv") %>%
   mutate(observation = str_trim(observation),
@@ -93,7 +97,72 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Large predatory fish"),
   scale_y_log10()+
   labs(y="School count / 500 m ", title="Large predatory fish")
 
-#### model for small schools in papyrus transects####
+#### model for small schools (papyrus and trees included) ####
+fish_schools <- fish_data |>
+  dplyr:: filter(fish_type == "Small schooling fish")
+fish_schools$habitat_main <- as.factor(fish_schools$habitat_main)
+fish_schools$river <- as.factor(fish_schools$river)
+fish_schools$transect_ID <- as.factor(fish_schools$transect_ID)  
+
+
+# count data and random effect of transect ID included so taking a poisson model
+glmm_schools <- glmer(total_count ~ habitat_main + river + distance_to_river_mouth + (1 | transect_ID),
+                         data = fish_schools,
+                         family = poisson)
+summary(glmm_schools)
+# no significant difference between trees and papyrus
+# significantly lower school count at Robana river 
+# significantly higher school count at mid distance compared to mouth
+# not significantly higher school count at far distance compared to mouth
+# some variance between transects
+
+# test the poisson model for overdispersion
+overdisp_fun <- function(glmm_schools) {
+  rdf <- df.residual(glmm_schools)
+  rp <- residuals(glmm_schools, type = "pearson")
+  Pearson.chisq <- sum(rp^2)
+  c(chisq = Pearson.chisq,
+    ratio = Pearson.chisq / rdf,
+    df = rdf,
+    p = pchisq(Pearson.chisq, df = rdf, lower.tail = FALSE))
+}
+
+overdisp_fun(glmm_schools)
+# dispersion ratio = 8.4 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
+
+# try negative binomial model
+nb_schools <- glmmTMB(
+  total_count ~ habitat_main + river + distance_to_river_mouth + (1 | transect_ID),
+  data = fish_schools,
+  family = nbinom2
+)
+
+summary(nb_schools)
+
+
+
+
+
+
+# Full model with both predictors
+model_full <- glmer(count ~ habitat + river + (1 | transect_ID), 
+                    family = poisson, data = your_data)
+
+# Reduced model without 'river'
+model_reduced <- glmer(count ~ habitat + (1 | transect_ID), 
+                       family = poisson, data = your_data)
+
+# Likelihood ratio test (LRT)
+anova(model_reduced, model_full, test = "Chisq")
+
+
+
+
+
+
+
+
+#### old model for small schools in papyrus transects ####
 school_pap <- fish_data %>% 
   filter(habitat_main == "Papyrus", fish_type == "Small schooling fish")
 school_pap$river <- as.factor(school_pap$river)
@@ -135,7 +204,7 @@ ggplot(school_pap, aes( x= distance_to_river_mouth, y= total_count, fill= river)
     "Robana" = "#56B4E9"))
 
 
-#### model for small schools in tree transects ####
+#### old model for small schools in tree transects ####
 school_tree <- fish_data|>
   filter(habitat_main == "Trees", fish_type == "Small schooling fish")
 
