@@ -231,9 +231,9 @@ pairs(emm)
 # get letters
 cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
 letters_df <- as.data.frame(cld_dist)
-letters_df <- letters_df %>%
+letters_df <- letters_df |>
   mutate(
-    y_pos = max(birds_meter_shoreline$birds_per_100m) * 1.05  # Adjust multiplier as needed for spacing
+    y_pos = max(birds_meter_shoreline$birds_per_100m) * 1.05
   )
 
 
