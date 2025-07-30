@@ -257,7 +257,7 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     fill = "River"
   ) +
   geom_text(data = letters_df,
-            aes(x = distance_to_river_mouth, y = y_pos, label = .group),
+            aes(x = distance_to_river_mouth, y = y_pos- 0.4, label = .group),
             color = "black",
             size = 5,
             fontface = "bold",
@@ -279,58 +279,7 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     plot.margin = margin(10, 10, 10, 10)
   )
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-# make plot with significance letters
-# plot bird counts per 100 meter shoreline
-ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
-  geom_boxplot(
-    color = "black",     
-    outlier.shape = 21,    
-    outlier.fill = "black",
-    outlier.color = "black",
-    outlier.size = 2
-  ) +
-  facet_grid(~ habitat_main) +
-  #scale_y_log10() +
-  scale_fill_manual(values = c(
-    "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9"
-  ))+
-  labs(
-    x = "Distance to river mouth",
-    y = "Count / 100 meter shoreline",
-    fill = "River"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.title = element_text(size = 13, face="bold"),
-    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
-    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
-    axis.text = element_text(size = 11),
-    legend.position = "right",
-    legend.title = element_text(size = 13, face = "bold"),
-    strip.text = element_text(size = 13, face = "bold"),
-    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
-    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
-    panel.grid.minor = element_blank(),
-    panel.spacing = unit(1.2, "lines"),
-    panel.border = element_rect(color = "black", size = 1, fill = NA),
-    plot.margin = margin(10, 10, 10, 10)
-  )
-
-#### model analysis papyrus transects old ####
+#### old model analysis papyrus transects  with count data ####
 # use Poisson regression model to test whether the total count of Pied kingfishers differs significantly between transects within each habitat type
 # due to uneven number of the paired transect design it is only possible to compare within a habitat and not between habitats papyrus: n=6, trees: n=8
 
@@ -363,7 +312,7 @@ summary(nb_papyrus2)
 # distance far p***
 # river Robana not significant
 
-#### model analysis tree transects old ####
+#### old model analysis tree transects with count data ####
 
 # add visible tree volume
 # load data of tree measurements
