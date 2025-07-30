@@ -12,9 +12,6 @@ library(emmeans)
 library(glmmTMB) # package for negative binomial model including random effects
 library(MASS) # this packacge I used for a negative binomial model, because of overdispersion
 
-install.packages("glmmTMB", type = "source")
-
-
 fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=946923967&single=true&output=csv") %>%
   mutate(observation = str_trim(observation),
          observation = case_when(
@@ -100,17 +97,15 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Large predatory fish"),
 #### model for small schools (papyrus and trees included) ####
 fish_schools <- fish_data |>
   dplyr:: filter(fish_type == "Small schooling fish")
-fish_schools$habitat_main <- as.factor(fish_schools$habitat_main)
 fish_schools$river <- as.factor(fish_schools$river)
 fish_schools$transect_ID <- as.factor(fish_schools$transect_ID)  
 
 
-# count data and random effect of transect ID included so taking a poisson model
-glmm_schools <- glmer(total_count ~ habitat_main + river + distance_to_river_mouth + (1 | transect_ID),
+# count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model
+glmm_schools <- glmer(total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
                          data = fish_schools,
                          family = poisson)
 summary(glmm_schools)
-# no significant difference between trees and papyrus
 # significantly lower school count at Robana river 
 # significantly higher school count at mid distance compared to mouth
 # not significantly higher school count at far distance compared to mouth
@@ -128,36 +123,75 @@ overdisp_fun <- function(glmm_schools) {
 }
 
 overdisp_fun(glmm_schools)
-# dispersion ratio = 8.4 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
+# dispersion ratio = 8.2 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
 
 # try negative binomial model
 nb_schools <- glmmTMB(
-  total_count ~ habitat_main + river + distance_to_river_mouth + (1 | transect_ID),
+  total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
   data = fish_schools,
   family = nbinom2
 )
-
 summary(nb_schools)
+# significant lower school counts at Robana river 
+# significant higher school counts at mid distance compared to mouth
+# no significant higher school counts 
+# variance of transect_ID is really low so exclude from the model
+
+
+# negative binomial model without random effect
+nb_schools2 <- glm.nb(total_count ~ river + distance_to_river_mouth, data = fish_schools)
+summary(nb_schools2)
+# Significant lower school count at Robana
+# significant higher at mid distance
+# not significant higher at far distancde
+
+
+emm <- emmeans(nb_schools2, ~ distance_to_river_mouth)
+pairs(emm)
+
+# get letters
+cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
+letters_df <- as.data.frame(cld_dist)
+letters_df <- letters_df |>
+  mutate(
+    y_pos = max(fish_schools$total_count) * 1.05
+  )
 
 
 
 
-
-
-# Full model with both predictors
-model_full <- glmer(count ~ habitat + river + (1 | transect_ID), 
-                    family = poisson, data = your_data)
-
-# Reduced model without 'river'
-model_reduced <- glmer(count ~ habitat + (1 | transect_ID), 
-                       family = poisson, data = your_data)
-
-# Likelihood ratio test (LRT)
-anova(model_reduced, model_full, test = "Chisq")
-
-
-
-
+  ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
+         aes( x= distance_to_river_mouth, y= total_count, fill= river))+
+  geom_boxplot()+
+  facet_grid(~habitat_main)+
+  theme(text= element_text(size=14))+
+  scale_y_log10()+
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )+
+  geom_text(data = letters_df,
+              aes(x = distance_to_river_mouth, y = y_pos- 0.4, label = .group),
+              color = "black",
+              size = 5,
+              fontface = "bold",
+              inherit.aes = FALSE)+
+  labs(x= "Distance to river mouth", y="School count / 500 m ")+
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"))
 
 
 
