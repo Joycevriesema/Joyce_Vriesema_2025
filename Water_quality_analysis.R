@@ -43,15 +43,9 @@ data_water <- read.csv("data_water.csv") %>%
            transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6", "tree_3", "tree_4","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"
          ))
 
-# make separate df's for papyrus and tree transects
-water_papyrus <- data_water |> 
-  filter(habitat_main == "Papyrus")
-
-water_trees <- data_water |> 
-  filter(habitat_main == "Trees")
 
 #### model Temperature ####
-# papyrus
+
 m1 <- lmer(temp ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
 summary(m1)
 # significant higher temp at Robana
