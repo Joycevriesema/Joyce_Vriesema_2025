@@ -68,27 +68,7 @@ summary(m1a)
 
 # likelihood ratio test to compare the linear mixed model and the fixed-effects model
 anova(m1, m1a)
-# p = 1.000, meaning the random effect explains zero additional variance.
-# so th simple model fits best
-
-# tree
-m1b <- lmer(temp ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m1b)
-# low variation explained by transect_ID
-# no significant higher temp at Robana
-# no significant lower temp at mid distance and far distance compared to mouth
-
-# try model without random effect of transect_ID
-m1c <- glm(temp ~ river + distance_to_river_mouth, data = water_trees)
-summary(m1c)
-# no significant higher temp at Robana
-# no significant lower temp at mid distance
-# significant lower temp at far distance
-
-# likelihood ratio test to compare the linear mixed model and the fixed-effects model
-anova(m1b, m1c)
-# p = 1.000, meaning the random effect explains zero additional variance.
-# so the simple model fits best
+# AIC values of m1 is much lower, chisq is 8.1 and p<0.01 so this shows that transect_ID should be kept as an random factor in the model --> or is this maybe because i did not include habitat_main in the model
 
 plot1 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=temp, fill= river))+
   geom_boxplot()+
@@ -119,43 +99,28 @@ plot1
 
 
 #### model for pH ####
-# papyrus
-m2 <- lmer(pH ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m2 <- lmer(pH ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m2)
+# significant effect of river
+# significant effect of distance to river mouth
 summary(m2)
-# zero variance explained by transect_ID so suggest removing random effect
+# low variance of transect ID
 # Robana river significantly higher pH 
-# far distance not significantly lower pH
+# mid distance not significantly higher than mouth
+# far distance significantly lower pH than mouth
 
 # model wihtout random effects
-m2a <- glm(pH ~ river + distance_to_river_mouth, data = water_papyrus)
+m2a <- glm(pH ~ river + distance_to_river_mouth, data = data_water)
+anova(m2a)
+# river and distance to river mouth both significant effect
 summary(m2a)
 # Robana significantly higher pH
-# far distance not signficalty lower
+# mid distance significantly higher than mouth
+# far distance significanlty lower than mouth
 
 # compare models with likelihood ratio test
 anova(m2,m2a)
-# p= 1 meaning zero variance from random effect, so choose simple model
-
-# tree
-m2b <- lmer(pH ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m2b)
-# Robana margially significant higher pH
-# distance mid not signficant higher pH
-# distance far significant lower pH *
-# low variance of transect_ID
-
-# model wihtout random effects
-m2c <- glm(pH ~ river + distance_to_river_mouth, data = water_trees)
-summary(m2c)
-# Robana river highly significant *** compared to previous model only marginally significant
-# mid distance not significant higher pH
-# far distance now highly significant *** compared to previous model *
-
-# compare models 
-anova (m2b,m2c)
-# difference in AIC values <2, log likelihood nearly the same, and p value 0.85
-# so simpeler model is a good choice
-
+# p> 0.05 so the random effect can be removed from the model
 plot2 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=pH, fill= river))+
   geom_boxplot()+
   facet_grid(~habitat_main)+
@@ -185,40 +150,29 @@ plot2
 
 #### model HDO ####
 # papyrus
-m3 <- lmer(HDO ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m3 <- lmer(HDO ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova (m3)
+# no significant effect of river
+# significant effect distance to river mouth
 summary(m3)
-# no signficant higher HDO at Robana
-# no significant lower HDO at far distance
-# variance of transect_ID is very low
+# no significant higher HDO at Robana
+# no significant lower HDO at mid distance
+# significantly lower HDO at far distance 
+# variance of transect_ID is quite low
 
 # model wihtout random effects
-m3a <- glm(HDO ~ river + distance_to_river_mouth, data = water_papyrus)
+m3a <- glm(HDO ~ river + distance_to_river_mouth, data = data_water)
+anova(m3a)
+# river no significant effect
+# distac=nce to river mouth significant effect
 summary(m3a)
 # Robana significantly higher HDO
-# far distance not significantly lower HDO
+# mid distance not significantly higher than mid
+# far distance significantly lower than mouth
 
 # compare models 
 anova(m3,m3a)
-# log likliehood same, p=1 and therefore no variance explained by transect_ID
-# so simpel model is a good choice
-
-# tree
-m3b <- lmer(HDO ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m3b)
-# little variance explained by transect
-# no significant higher HDO at Robana
-# no signficant lower HDO at mid distance
-# signficant lower HDO at far distance 
-
-# model wihtout random effects
-m3c <- glm(HDO ~ river + distance_to_river_mouth, data = water_trees)
-summary(m3c)
-# not significant higher HDO at Robana 
-# not significant lower HDO at mid
-# significant lower HDO at far
-anova(m3b,m3c)
-# log likelihood is the same, p=1 no variance explained by transect_ID
-# simple model is a good fit
+# m3 lower AIC, p<0.05 so keep the random effect
 
 plot3 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=HDO, fill= river))+
   geom_boxplot()+
@@ -248,40 +202,26 @@ plot3 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=HDO, fill= river))+
 plot3
 
 #### model HDO sat ####
-# papyrus
-m4 <- lmer(HDO_sat ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m4 <- lmer(HDO_sat ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m4)
+# no significant effect of river
+# distance to river mouth significant effect
 summary(m4)
 # no signficant higher HDO at Robana
-# no significant lower HDO at far distance
-# some variation in transect_ID
+# no significant lower HDO at mid distance
+# significant lower HDO at far distance
+# quite some variation in transect_ID
 
 # model wihtout random effects
-m4a <- glm(HDO_sat ~ river + distance_to_river_mouth, data = water_papyrus)
+m4a <- glm(HDO_sat ~ river + distance_to_river_mouth, data = data_water)
 summary(m4a)
 # Robana significantly higher HDO
-# far distance not significantly lower HDO
+# not significant lower HDO at mid distance
+# significant lower HDO at far distance
 
 # compare models 
 anova(m4,m4a)
-# log likliehood same, p=1 and therefore no variance explained by transect_ID
-# so simple model is a good choice
-
-# tree
-m4b <- lmer(HDO_sat ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m4b)
-# not significant higher HDO at Robana
-# not signficant lower HDO at mid distance
-# signficant lower HDO at far distance 
-
-# model wihtout random effects
-m4c <- glm(HDO_sat ~ river + distance_to_river_mouth, data = water_trees)
-summary(m4c)
-# not significant higher HDO at Robana 
-# not significant lower HDO at mid
-# significant lower HDO at far
-anova(m4b,m4c)
-# log likilihood is the same, p=1
-# so simple model is a good choice
+# lower AIC for model m4 and p<0.05 so keep random effect in the model
 
 plot4 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=HDO_sat, fill= river))+
   geom_boxplot()+
