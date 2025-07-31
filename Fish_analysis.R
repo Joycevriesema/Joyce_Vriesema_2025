@@ -143,29 +143,29 @@ nb_schools2 <- glm.nb(total_count ~ river + distance_to_river_mouth, data = fish
 summary(nb_schools2)
 # Significant lower school count at Robana
 # significant higher at mid distance
-# not significant higher at far distancde
+# not significant higher at far distance
 
-
-emm <- emmeans(nb_schools2, ~ distance_to_river_mouth)
+# pairwise comparison
+emm <- emmeans(nb_schools2, ~ river + distance_to_river_mouth)
 pairs(emm)
 
-# get letters
+# get the significan letters
 cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
 letters_df <- as.data.frame(cld_dist)
-letters_df <- letters_df |>
+letters_df <- letters_df %>%
+  group_by(river, distance_to_river_mouth) %>%
   mutate(
-    y_pos = max(fish_schools$total_count) * 1.05
-  )
+    y_pos = max(fish_schools$total_count) * 1.05 + (row_number() - 1) * 0.5
+  ) %>%
+  ungroup()
 
-
-
-
-  ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
+# make plot with significance letters
+ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
          aes( x= distance_to_river_mouth, y= total_count, fill= river))+
-  geom_boxplot()+
+  geom_boxplot(position = position_dodge(width = 0.75))+
   facet_grid(~habitat_main)+
+  scale_y_log10() +
   theme(text= element_text(size=14))+
-  scale_y_log10()+
   theme_minimal(base_size = 14) +
   theme(
     axis.title = element_text(size = 13, face="bold"),
@@ -182,19 +182,21 @@ letters_df <- letters_df |>
     panel.border = element_rect(color = "black", size = 1, fill = NA),
     plot.margin = margin(10, 10, 10, 10)
   )+
-  geom_text(data = letters_df,
-              aes(x = distance_to_river_mouth, y = y_pos- 0.4, label = .group),
-              color = "black",
-              size = 5,
-              fontface = "bold",
-              inherit.aes = FALSE)+
+  geom_text(
+    data = letters_df,
+    aes(x = distance_to_river_mouth, y = y_pos, label = .group, group= river),
+    color = "black",
+    size = 3,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE
+  )+
   labs(x= "Distance to river mouth", y="School count / 500 m ")+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))
 
-
-
+ 
 
 #### old model for small schools in papyrus transects ####
 school_pap <- fish_data %>% 
