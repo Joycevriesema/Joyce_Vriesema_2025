@@ -45,20 +45,26 @@ data_water <- read.csv("data_water.csv") %>%
 
 
 #### model Temperature ####
-
-m1 <- lmer(temp ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m1 <- lmer(temp ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m1)
 summary(m1)
 # significant higher temp at Robana
-# no signficant higher temop far than mouth
+# no significant higher temperature far than mouth
+# no significant higher temperature at far distance compared to mouth
 # variance of transect_ID is quite low
 
 qqnorm(resid(m1)); qqline(resid(m1))
 # residuals look good
 
 # try model without random effect of transect_ID
-m1a <- glm (temp ~ river + distance_to_river_mouth, data = water_papyrus)
+m1a <- glm (temp ~ river + distance_to_river_mouth, data = data_water)
+anova (m1a)
+# river has an effect
+# distance to river mouth has not
 summary(m1a)
-# now distance far significant higher temp than mouth
+# Robana river significantly higher temp
+# mid distance not significantly higher than mouth
+# far not significantly higher than mouth
 
 # likelihood ratio test to compare the linear mixed model and the fixed-effects model
 anova(m1, m1a)
