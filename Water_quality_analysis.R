@@ -252,39 +252,26 @@ plot4
 
 #### model Turbidity ####
 # papyrus
-m5 <- lmer(turb ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m5 <- lmer(turb ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m5)
+# river has a significant effect
+# distance to river mouth no significant effect
 summary(m5)
-# marginally significant higher turb at Robana
+# significant higher turb at Robana
+# no significant lower turbidity at mid distance
 # no significant lower turbidity at far distance
-# some variation in transect_ID
+# quite some variation in transect_ID
 
 # model wihtout random effects
-m5a <- glm(turb ~ river + distance_to_river_mouth, data = water_papyrus)
+m5a <- glm(turb ~ river + distance_to_river_mouth, data = data_water)
 summary(m5a)
 # Robana significantly higher turbidity
-# far distance significantly lower turbidity
+# mid distance not significantly lower turbidity than mouth
+# far distance not significantly lower turbidity than mouth
 
 # compare models 
 anova(m5,m5a)
-# p= 0.15, difference in AIC= 0000.1, so both models could be a good fit
-
-# tree
-m5b <- lmer(turb ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m5b)
-# Robana not significant higher turbidity
-# mid distance has no significant lower turbidity
-# far distance has no significant lower turbidity
-# more variation within transects and not between transects
-
-# model wihtout random effects
-m5c <- glm(turb ~ river + distance_to_river_mouth, data = water_trees)
-summary(m5c)
-# Robana not significant higher turbidity
-# mid distance has no significant lower turbidity
-# far distance has no significant lower turbidity
-anova(m5b,m5c)
-# log likilihood is the same, p=1
-# so simple model is a good choice
+# p=1, difference in AIC is very small, so both models could be a good fit
 
 plot5 <-ggplot(data_water |> filter(turb<2000),
                aes(x= distance_to_river_mouth, y=turb, fill= river))+
@@ -314,43 +301,28 @@ plot5 <-ggplot(data_water |> filter(turb<2000),
   )
 plot5
 #### model Conductivity ####
-# papyrus
-m6 <- lmer(cond ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m6 <- lmer(cond ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m6)
+# significant effect of river
+# significant effect of distance to river mouth
 summary(m6)
 # significant higher conductivity at Robana
+# significant lower conductivity at mid distance compared to mouth
 # no significant lower conductivity at far distance
-# some variance between transect but more within transect
+# quite some variance between transect but more within transect
 
-# model wihtout random effects
-m6a <- glm(cond ~ river + distance_to_river_mouth, data = water_papyrus)
+# model without random effects
+m6a <- glm(cond ~ river + distance_to_river_mouth, data = data_water)
+anova(m6a)
 summary(m6a)
-# Robana significantly higher conductivity 
-# far distance now suddenly significantly higher conductivity, is a bit suspicious
+# Robana highly significant
+# mid distance highly significant lower conductivity 
+# far distance not significantly higher than mouth
 
 # compare models 
 anova(m6,m6a)
-# AIC of th emixed model is slighyl lower
-# p= 0.07 so marginally significant that including the random effect improves the model
-# keep the mixed model
-
-# tree
-m6b <- lmer(cond ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m6b)
-# Robana not significant higher conductivity
-# mid distance has significant lower conductivity
-# far distance has no significant lower conductivity
-# more variation within transects and not between transects
-
-# model wihtout random effects
-m6c <- glm(cond ~ river + distance_to_river_mouth, data = water_trees)
-summary(m6c)
-# Robana not significant higher conductivity
-# mid distance has significant lower conductivity
-# far distance has significant lower conductivity
-
-anova(m6b,m6c)
-# p <0.001 so significant effect shows a highly significant improvement when including the random effect.
-# The AIC drops by 25 points, which is a large improvement (ΔAIC > 10 is usually considered strong evidence)
+# AIC of the mixed model is little bit lower
+# p <0.001 so keep the random effect
 
 plot6 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=cond, fill= river))+
   geom_boxplot()+
@@ -381,36 +353,25 @@ plot6
 
 
 #### model for TDS ####
-# papyrus 
-m7 <- lmer(TDS ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m7 <- lmer(TDS ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m7)
+# significant effect of river
+# significant effect of distance to river mouth
 summary(m7)
-# some variance between transects
-# more variance within transects
 # significant higher TDS at Robana
-# no significant difference between mouth and far
+# significant lower TDS at mid distance than mouth
+# no significant higher TDS at far distance 
 
 # model without random effect
-m7a <- glm(TDS ~ river + distance_to_river_mouth, data = water_papyrus)
+m7a <- glm(TDS ~ river + distance_to_river_mouth, data = data_water)
+anova(m7a)
+# both river and distance to river mouth highly significant 
 summary(m7a)
-# significant higher TDS at Robana river
-# significant higher TDS at distance far
+# significant higher TDS at Robana river ***
+# significant lower TDS at distance mid ***
+# not significant higher TDS at far distance
 anova(m7,m7a)
-# p= 0.08016, just above 0.05
-# the mixed model has a slightly lower AIC, so better
-# but the p value 0.08 suggests that adding the random effect only marginally improves the model 
-
-# tree
-m7b <- lmer(TDS ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m7b)
-# significantly lower at mid-distance 
-# no difference between mouth and far
-# no difference between Mbalageti and Robana
-
-# model without random effect
-m7c <- glm(TDS ~ river + distance_to_river_mouth, data = water_trees)
-summary(m7c)
-anova(m7b,m7c)
-# p value highly significant so mixed model is better
+# AIC model m7 is lower, chisq is 81.8 and p<0.001, so keep the random effect in the model
 
 # plot TDS
 plot7 <-ggplot(data_water,aes( x= distance_to_river_mouth, y= TDS, fill= river))+
@@ -449,49 +410,27 @@ ggplot(data_water |>dplyr::filter(TDS>50),
   labs(y="TDS (mg/L) ", title="TDS")+
   
   plot1
-
-
-
-
-
 #### model for ORP ####
-# papyrus 
-m8 <- lmer(ORP ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_papyrus)
+m8 <- lmer(ORP ~ river + distance_to_river_mouth + (1 | transect_ID), data = data_water)
+anova(m8)
+# significant effect of river
+# significant effect of distance to river mouth
 summary(m8)
-# some variance between transects
-# more variance within transects
+# quite some variance between transects
 # significant lower ORP at Robana
-# no significant difference between mouth and far
+# no significant lower ORP at mid distance
+# significant higher ORP at far distance
 
 # model without random effect
-m8a <- glm(ORP ~ river + distance_to_river_mouth, data = water_papyrus)
+m8a <- glm(ORP ~ river + distance_to_river_mouth, data = data_water)
+anova(m8a)
+# both river and distance to river mouth, highly significant
 summary(m8a)
 # significant lower ORP at Robana river
+# significant higher ORP at distance mid
 # significant higher ORP at distance far
 anova(m8,m8a)
-# p= 0.6
-# so simple model is a good fit
-
-# tree
-m8b <- lmer(ORP ~ river + distance_to_river_mouth + (1 | transect_ID), data = water_trees)
-summary(m8b)
-# Robana not significantly lower that Mbalageti
-# not significantly lower at mid-distance 
-# significantly higher at far distance 
-# some variance between transects
-# more variance within transects
-
-
-# model without random effect
-m8c <- glm(ORP ~ river + distance_to_river_mouth, data = water_trees)
-summary(m8c)
-# Robana significantly lower
-# mid distance significantly lower
-# far distance significantly higher 
-
-anova(m8b,m8c)
-# p=0.33
-# so simple model would be a good fit
+# p<0.001 and AIC lower in m8 so keep the random effect in the model
 
 plot8 <-ggplot(data_water,aes( x= distance_to_river_mouth, y= ORP, fill= river))+
   geom_boxplot()+
