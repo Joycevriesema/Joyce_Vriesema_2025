@@ -149,7 +149,7 @@ summary(nb_schools2)
 emm <- emmeans(nb_schools2, ~ river + distance_to_river_mouth)
 pairs(emm)
 
-# get the significan letters
+# get the significance letters
 cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
 letters_df <- as.data.frame(cld_dist)
 letters_df <- letters_df %>%

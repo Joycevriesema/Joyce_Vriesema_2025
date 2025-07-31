@@ -45,9 +45,9 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
            transect_ID %in% c("pap_1", "pap_2", "tree_1", "tree_2") ~ "Mbalageti",
            transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6", "tree_3", "tree_4","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"
          )) |>
-  group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, species_name, date ) |>
+  group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, bird_species_ID, date ) |>
   summarise(total_count= sum(count))|>
-  filter(species_name=="Pied kingfisher")
+  filter(bird_species_ID=="Pied kingfisher")
 
 # old exploratory graphs
 ggplot(data_bird, aes(x= as.factor(date), y= total_count, fill= transect_ID))+
@@ -222,7 +222,7 @@ anova(m1,m1a)
 
 
 # pairwise comparisons for m1
-emm <- emmeans(m1, ~ distance_to_river_mouth)
+emm <- emmeans(m1, ~ river+ distance_to_river_mouth)
 pairs(emm)
 # mouth significantly higher than mid
 # mouth not significantly higher than far
@@ -233,12 +233,13 @@ cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
 letters_df <- as.data.frame(cld_dist)
 letters_df <- letters_df |>
   mutate(
-    y_pos = max(birds_meter_shoreline$birds_per_100m) * 1.05
-  )
+    y_pos = max(birds_meter_shoreline$total_count) * 1.05 + (row_number() - 1) * 0.5
+  ) %>%
+  ungroup()
 
 
 ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
-  geom_boxplot(
+  geom_boxplot(position = position_dodge(width = 0.75),
     color = "black",     
     outlier.shape = 21,    
     outlier.fill = "black",
@@ -246,7 +247,7 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     outlier.size = 2
   ) +
   facet_grid(~ habitat_main) +
-  #scale_y_log10() +
+  scale_y_log10() +
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"
@@ -256,12 +257,15 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     y = "Count / 100 meter shoreline",
     fill = "River"
   ) +
-  geom_text(data = letters_df,
-            aes(x = distance_to_river_mouth, y = y_pos- 0.4, label = .group),
-            color = "black",
-            size = 5,
-            fontface = "bold",
-            inherit.aes = FALSE)+
+  geom_text(
+    data = letters_df,
+    aes(x = distance_to_river_mouth, y = y_pos, label = .group, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE
+  )+
   theme_minimal(base_size = 14) +
   theme(
     axis.title = element_text(size = 13, face="bold"),
