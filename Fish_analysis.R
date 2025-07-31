@@ -186,7 +186,7 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"),
     data = letters_df,
     aes(x = distance_to_river_mouth, y = y_pos, label = .group, group= river),
     color = "black",
-    size = 3,
+    size = 4,
     fontface = "bold",
     position = position_dodge(width = 0.75),
     inherit.aes = FALSE
