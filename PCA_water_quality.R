@@ -1,11 +1,11 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse) # includes dplyr, ggplot2
-library(vegan) 
-library(psych) 
-library(ggrepel)
-library(patchwork)
+library(tidyverse)  # includes dplyr, ggplot2
+library(vegan)      # multivariate analysis of ecological community data   
+library(psych)      # useful for panel plots of multivariate datasets
+library(ggrepel)    # label placement for ggplot2 to avoid overlapping text
+library(patchwork)  # combine multiple ggplot2 plots into one layout 
 
 # load data_water
 data_water <- read.csv("data_water.csv") |>

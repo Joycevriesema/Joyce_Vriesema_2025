@@ -1,11 +1,11 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse) # includes dplyr, ggplot2 and tidyr
-library(lme4)
-library(lmerTest)
-library(MASS)
-library(emmeans)
+library(tidyverse)  # includes dplyr, ggplot2 and tidyr
+library(lme4)       # for mixed models
+library(lmerTest)   # for tests of significance of mixed-effects models
+library(MASS)       # for negative binomial models
+library(emmeans)    # pairwise comparison
 
 # load bird data and filter out old data (5-Feb-2025 & 8-Feb-2025)
 data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=0&single=true&output=csv") |>
