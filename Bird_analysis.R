@@ -1,14 +1,11 @@
 rm(list = ls())
 
 # load libraries
-library(dplyr)
-library(ggplot2)
-library(tidyr)
+library(tidyverse) # includes dplyr, ggplot2 and tidyr
 library(lme4)
 library(lmerTest)
 library(MASS)
 library(emmeans)
-
 
 # load bird data and filter out old data (5-Feb-2025 & 8-Feb-2025)
 data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=0&single=true&output=csv") |>
@@ -112,23 +109,7 @@ birds_meter_shoreline <- data_bird_trees |>
     birds_per_100m = birds_per_meter * 100
   )
 
-
-# plot bird counts per tree volume
-ggplot(birds_meter_shoreline |> dplyr:: filter(habitat_main == "Trees"), aes(x = total_visible_tree_volume, y = total_count)) +
-  geom_point(size = 2, color = "#0072B2")+
-  geom_smooth(method = "lm", se = TRUE, color = "black", linetype = "solid") +
-  #geom_text_repel(aes(label = transect_ID), size = 4, fontface = "bold") +
-  labs(
-    x = "Visible tree volume (m³)",
-    y = "Total bird count"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.title = element_text(face = "bold"),
-    axis.text = element_text(color = "black")
-  )
-
-# plot with symbols for the different habitat combinations
+# plot tree volume for the different habitat combinations with symbols
 ggplot(birds_meter_shoreline|> dplyr:: filter(habitat_main == "Trees"), aes(x = total_visible_tree_volume, y = total_count)) +
   geom_point(aes(color = habitat_detailed, shape = habitat_detailed), size = 3) +
   geom_smooth(method = "lm", se = TRUE, color = "black", linetype = "solid") +
@@ -287,7 +268,7 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
 # use Poisson regression model to test whether the total count of Pied kingfishers differs significantly between transects within each habitat type
 # due to uneven number of the paired transect design it is only possible to compare within a habitat and not between habitats papyrus: n=6, trees: n=8
 
-papyrus_data <- data_bird %>% filter(habitat_main == "Papyrus")
+papyrus_data <- data_bird |> filter(habitat_main == "Papyrus")
 papyrus_data$river <- as.factor(papyrus_data$river)
 papyrus_data$distance_to_river_mouth <- as.factor(papyrus_data$distance_to_river_mouth)
 papyrus_data$transect_ID <- as.factor(papyrus_data$transect_ID)
@@ -355,10 +336,5 @@ summary(nb_trees2)
 anova(nb_trees, nb_trees2, test = "LRT")
 # AIC of the model with visible tree volume is little bit lower so could suggest this simpler model, although it is not significant
 
-# pairwise comparison to see which combination of distance river mouth mid is different
-emm <- emmeans(nb_trees, pairwise ~ river * distance_to_river_mouth)
-emm
-# Robana mouth signifcantly different from Mbalageti mid
-# Robana far significantly different from Mbalageti mid
 
 
