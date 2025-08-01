@@ -1,15 +1,15 @@
 rm(list = ls())
 
 # load libraries
-library(dplyr)
-library(ggplot2)
-library(lme4)
-library(patchwork)
-library(emmeans)
-library(lmerTest)
+library(tidyverse)  # includes dplyr, ggplot2 and tidyr
+library(lme4)       # for mixed models
+library(lmerTest)   # for tests of significance of mixed-effects models
+library(MASS)       # for negative binomial models
+library(emmeans)    # pairwise comparison
+library(patchwork)  # combine multiple ggplot2 plots into one layout 
 
 # load data_water
-data_water <- read.csv("data_water.csv") %>%
+data_water <- read.csv("data_water.csv") |>
   dplyr::mutate(transect_date_time = paste(transect_ID, substr(date_time_end, 1, 6), substr(date_time_start, 12, 16), sep = " "))|>
   mutate(date=as.Date(date, format= "%d-%b-%Y"),
          habitat_detailed = case_when(
@@ -53,11 +53,8 @@ summary(m1)
 # no significant higher temperature at far distance compared to mouth
 # variance of transect_ID is quite low
 
-qqnorm(resid(m1)); qqline(resid(m1))
-# residuals look good
-
 # try model without random effect of transect_ID
-m1a <- glm (temp ~ river + distance_to_river_mouth, data = data_water)
+m1a <- lm(temp ~ river + distance_to_river_mouth, data = data_water)
 anova (m1a)
 # river has an effect
 # distance to river mouth has not
@@ -110,7 +107,7 @@ summary(m2)
 # far distance significantly lower pH than mouth
 
 # model wihtout random effects
-m2a <- glm(pH ~ river + distance_to_river_mouth, data = data_water)
+m2a <- lm(pH ~ river + distance_to_river_mouth, data = data_water)
 anova(m2a)
 # river and distance to river mouth both significant effect
 summary(m2a)
@@ -161,7 +158,7 @@ summary(m3)
 # variance of transect_ID is quite low
 
 # model wihtout random effects
-m3a <- glm(HDO ~ river + distance_to_river_mouth, data = data_water)
+m3a <- lm(HDO ~ river + distance_to_river_mouth, data = data_water)
 anova(m3a)
 # river no significant effect
 # distac=nce to river mouth significant effect
@@ -213,7 +210,7 @@ summary(m4)
 # quite some variation in transect_ID
 
 # model wihtout random effects
-m4a <- glm(HDO_sat ~ river + distance_to_river_mouth, data = data_water)
+m4a <- lm(HDO_sat ~ river + distance_to_river_mouth, data = data_water)
 summary(m4a)
 # Robana significantly higher HDO
 # not significant lower HDO at mid distance
@@ -263,7 +260,7 @@ summary(m5)
 # quite some variation in transect_ID
 
 # model wihtout random effects
-m5a <- glm(turb ~ river + distance_to_river_mouth, data = data_water)
+m5a <- lm(turb ~ river + distance_to_river_mouth, data = data_water)
 summary(m5a)
 # Robana significantly higher turbidity
 # mid distance not significantly lower turbidity than mouth
@@ -312,7 +309,7 @@ summary(m6)
 # quite some variance between transect but more within transect
 
 # model without random effects
-m6a <- glm(cond ~ river + distance_to_river_mouth, data = data_water)
+m6a <- lm(cond ~ river + distance_to_river_mouth, data = data_water)
 anova(m6a)
 summary(m6a)
 # Robana highly significant
@@ -363,7 +360,7 @@ summary(m7)
 # no significant higher TDS at far distance 
 
 # model without random effect
-m7a <- glm(TDS ~ river + distance_to_river_mouth, data = data_water)
+m7a <- lm(TDS ~ river + distance_to_river_mouth, data = data_water)
 anova(m7a)
 # both river and distance to river mouth highly significant 
 summary(m7a)
@@ -422,7 +419,7 @@ summary(m8)
 # significant higher ORP at far distance
 
 # model without random effect
-m8a <- glm(ORP ~ river + distance_to_river_mouth, data = data_water)
+m8a <- lm(ORP ~ river + distance_to_river_mouth, data = data_water)
 anova(m8a)
 # both river and distance to river mouth, highly significant
 summary(m8a)
@@ -459,7 +456,7 @@ plot8 <-ggplot(data_water,aes( x= distance_to_river_mouth, y= ORP, fill= river))
   )
 plot8
 
-
+### make combined plot ####
 # combine the plots into 1
 combined_plot <- (
   plot1 | plot2 | plot3
@@ -471,9 +468,9 @@ combined_plot <- (
     plot7 | plot8 | plot_spacer()
   ) +
   plot_layout(
-    widths = c(1, 1, 1),       # equal column widths
-    heights = c(1, 1, 1),      # equal row heights
-    guides = "collect"         # 👈 collect legend from all plots
+    widths = c(1, 1, 1),       
+    heights = c(1, 1, 1),     
+    guides = "collect"         
   ) &
   theme(
     plot.margin = margin(5, 5, 5, 5),
