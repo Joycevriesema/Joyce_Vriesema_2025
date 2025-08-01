@@ -1,12 +1,10 @@
 rm(list = ls())
 
 # load libraries
-library(dplyr)
-library(ggplot2)
-library(tidyr)
-library(ggrepel)
-library(emmeans)
-library(patchwork)
+library(tidyverse)  # includes dplyr, ggplot2
+library(ggrepel)    # label placement for ggplot2 to avoid overlapping text
+library(emmeans)    # pairwise comparison
+library(patchwork)  # combine multiple ggplot2 plots into one layout 
 
 # load tree data
 data_trees <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=1205571162&single=true&output=csv") |>
@@ -44,7 +42,7 @@ data_trees <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGe
   group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main )|>
   filter(habitat_main!= "Papyrus")
 
-# calculate tree volume (as ellyptic cylinder) for every transect
+# calculate tree volume (as ellyptical cylinder) for every transect
 data_trees$tree_volume <- pi * (data_trees$canopy_length / 2) * (data_trees$canopy_depth / 2) * data_trees$tree_heigth
 
 # calculate visible tree volume = tree volume x visibility for every transect
@@ -66,7 +64,7 @@ data_trees$tree_circumference <- with(data_trees, {
 data_trees$visible_circumference <- data_trees$tree_circumference * (data_trees$tree_visibility / 100)
 
 # sum tree volumes, visible tree volumes and visible circumfence per transect, so that every transect has one value
-data_trees <- data_trees %>%
+data_trees <- data_trees |>
   summarise(total_tree_volume = sum(tree_volume),
             total_visible_tree_volume = sum(visible_tree_volume),
             total_canopy_length = sum(canopy_length),
