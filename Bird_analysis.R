@@ -219,7 +219,7 @@ letters_df <- letters_df |>
   ungroup()
 
 
-ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
+plot_birds_meter_shoreline <- ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
   geom_boxplot(position = position_dodge(width = 0.75),
     color = "black",     
     outlier.shape = 21,    
@@ -263,6 +263,9 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     panel.border = element_rect(color = "black", size = 1, fill = NA),
     plot.margin = margin(10, 10, 10, 10)
   )
+plot_birds_meter_shoreline
+# save the plot
+ggsave("plotbirds per meter shoreline.png", plot_birds_meter_shoreline, width = 12, height = 6, dpi = 300)
 
 #### old model analysis papyrus transects  with count data ####
 # use Poisson regression model to test whether the total count of Pied kingfishers differs significantly between transects within each habitat type
