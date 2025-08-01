@@ -129,7 +129,7 @@ cor_compare <- left_join(cor_raw_df, cor_avg_df, by = c("Var1", "Var2")) |>
   arrange(Var1, Var2)
 
 # view table
-print(cor_compare_unique)
+print(cor_compare)
 # temperature vs turbidity changes from 0.14 (weak positive) in raw to 0.51 (moderate positive) in averaged.
 # ORP vs turbidity flips from 0.21 (positive) in raw to -0.15 (negative) in averaged.
 # conductivity vs turbidity increases from 0.41 (moderate) in raw to 0.85 (very strong positive) in averaged.
@@ -261,7 +261,7 @@ ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
     plot.margin = margin(10, 10, 10, 10)
   )
 
-# plot PC2 which represents water clarity
+# plot PC2 which represents water clarity (visible water quality)
 ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
   geom_boxplot()+
   facet_grid(~habitat_main)+
@@ -289,23 +289,48 @@ ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
 
 # test the effects of river and distance to river mouth on the water quality PC's
 # anova PC1 (chemical water quality)
-model_pc1 <- lm(PC1 ~ river + distance_to_river_mouth, data = pca_with_meta)
+model_pc1 <- lmer(PC1 ~ river + distance_to_river_mouth + (1 | transect_ID), data = pca_with_meta)
 anova(model_pc1)
 # river no significant effect
 # distance to river mouth significant effect
 summary(model_pc1)
-# but now Robana is significantly higher 
-# mid distance is significantly higher than mouth
+# Robana not significantly higher 
+# mid distance not significantly higher than mouth
 # far distance is significantly lower than mouth
+# little variance of transect ID
 
-# so in the anova river was not significant but in the model summary it is
-# so this maybe indicates that testing in isolation river is not that important 
-# but in the summary it is tested after adjusting for distance to river mouth and then it has a partial effect
+# test without the random effect
+model_pc1a <- lm(PC1 ~ river + distance_to_river_mouth, data = pca_with_meta)
+anova(model_pc1a)
+summary(model_pc1a)
+# now Robana river significantly higher??
+# mid distance significantly higher than mouth
+# far distance significantly lower than mouth
 
+# compare models
+anova(model_pc1, model_pc1a)
+# AIC lower for model pc1 and the p<0.05 so keep the random effect included in the model
 
 # anova PC2
-model_pc2 <- lm(PC2 ~ habitat_main + river + distance_to_river_mouth, data = pca_with_meta)
+model_pc2 <- lmer(PC2 ~ river + distance_to_river_mouth + (1 | transect_ID) , data = pca_with_meta)
 anova(model_pc2)
+# river had a significant effect
+# significant effect of distance to river mouth
 summary(model_pc2)
+# some variance between transects
+# Robana significantly higher values 
+# mid distance signficantly lower than mouth --> lower value for water clarity actually means a better water quality, cause lower values of turbditity, TDS and cond
+# far distance not significantly lower than mouth
 
-# check assumptions
+# try model without random effect
+model_pc2a <- lm(PC2 ~ river + distance_to_river_mouth, data = pca_with_meta)
+anova(model_pc2a)
+# both river and distance to river highly significant
+summary(model_pc2a)
+# Robana significantly higher 
+# mid distance signifcantly lower than mouth
+# far distance significantly lower than mouth
+
+# compared models
+anova (model_pc2, model_pc2a)
+# AIC model pc2 is lower and the pvalue < 0.001 indicating to keep the random effect in the model
