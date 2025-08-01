@@ -1,18 +1,15 @@
 rm(list = ls())
 
 # load libraries
-library(dplyr)
-library(tidyverse)
-library(stringr)
-library(ggplot2)
-library(tidyr)
-library(vegan)
-library(lme4)
-library(emmeans)
-library(glmmTMB) # package for negative binomial model including random effects
-library(MASS) # this packacge I used for a negative binomial model, because of overdispersion
+library(tidyverse)  # includes dplyr, ggplot2, tidyr
+library(lme4)       # for mixed models
+library(lmerTest)   # for tests of significance of mixed-effects models
+library(MASS)       # for negative binomial models
+library(emmeans)    # pairwise comparison
+library(glmmTMB)    # for negative binomial model including random effects
 
-fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=946923967&single=true&output=csv") %>%
+# load fish data
+fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=946923967&single=true&output=csv")|>
   mutate(observation = str_trim(observation),
          observation = case_when(
            observation %in% c("O O", "O.", "OO") ~ "O", # remove spaces and dots so that al O's belong into the same class
@@ -59,6 +56,7 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
   group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date, fish_type ) |>
   summarise(total_count= n())
 
+# exploratory graph small schooling fish
 ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
        aes( x= distance_to_river_mouth, y= total_count, fill= river))+
   geom_boxplot()+
@@ -86,6 +84,7 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"),
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))
 
+# exploratory graph large predatory fish
 ggplot(fish_data |>dplyr::filter(fish_type == "Large predatory fish"), 
        aes( x= distance_to_river_mouth, y= total_count, fill= river))+
   geom_boxplot()+
@@ -99,7 +98,6 @@ fish_schools <- fish_data |>
   dplyr:: filter(fish_type == "Small schooling fish")
 fish_schools$river <- as.factor(fish_schools$river)
 fish_schools$transect_ID <- as.factor(fish_schools$transect_ID)  
-
 
 # count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model
 glmm_schools <- glmer(total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
@@ -199,7 +197,7 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"),
  
 
 #### old model for small schools in papyrus transects ####
-school_pap <- fish_data %>% 
+school_pap <- fish_data |> 
   filter(habitat_main == "Papyrus", fish_type == "Small schooling fish")
 school_pap$river <- as.factor(school_pap$river)
 school_pap$transect_ID <- as.factor(school_pap$transect_ID)
