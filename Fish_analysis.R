@@ -158,7 +158,7 @@ letters_df <- letters_df %>%
   ungroup()
 
 # make plot with significance letters
-ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
+plot_fish <- ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
          aes( x= distance_to_river_mouth, y= total_count, fill= river))+
   geom_boxplot(position = position_dodge(width = 0.75))+
   facet_grid(~habitat_main)+
@@ -193,8 +193,9 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"),
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))
-
- 
+plot_fish
+# save the plot
+ggsave("plot small fish schools.png", plot_fish, width = 12, height = 6, dpi = 300)
 
 #### old model for small schools in papyrus transects ####
 school_pap <- fish_data |> 
