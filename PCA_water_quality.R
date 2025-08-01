@@ -1,12 +1,11 @@
 rm(list = ls())
 
 # load libraries
-library(dplyr)
-library(vegan) # multivariate analysis of ecological community data 
-library(psych) # for panel plots of multivariate datasets
-library(tidyverse)
-library(ggplot2)
+library(tidyverse) # includes dplyr, ggplot2
+library(vegan) 
+library(psych) 
 library(ggrepel)
+library(patchwork)
 
 # load data_water
 data_water <- read.csv("data_water.csv") |>
@@ -188,15 +187,13 @@ arrow_scale <- 4.5
 loadings$PC1 <- loadings$PC1 * arrow_scale
 loadings$PC2 <- loadings$PC2 * arrow_scale
 
-# make plot
+# plot
 ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
   geom_point(size = 3.5, alpha= 0.9) +
-  # Add arrows
   geom_segment(data = loadings,
                aes(x = 0, y = 0, xend = PC1, yend = PC2),
                arrow = arrow(length = unit(0.25, "cm")),
                color = "black", linewidth = 0.5) +
-  # Add variable labels
   geom_text_repel(
     data = loadings,
     aes(x = PC1, y = PC2, label = varname),
@@ -236,11 +233,11 @@ meta <- data_water[rows_to_keep, ]
 pca_with_meta <- cbind(meta, scores)
 
 # plot PC1 which represents water aeration (chemical water quality)
-ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
+plot1 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
-  labs(x= "Distance to river mouth", y= "Water aeration (PC1)")+
+  labs(x= "Distance to river mouth", y= "Water aeration/oxidation (PC1)")+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
@@ -260,9 +257,10 @@ ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
     panel.border = element_rect(color = "black", size = 1, fill = NA),
     plot.margin = margin(10, 10, 10, 10)
   )
+plot1
 
 # plot PC2 which represents water clarity (visible water quality)
-ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
+plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
@@ -286,6 +284,12 @@ ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
     panel.border = element_rect(color = "black", size = 1, fill = NA),
     plot.margin = margin(10, 10, 10, 10)
   )
+plot2
+
+# make combined plot
+combined_plot <- plot1 | plot2
+print(combined_plot)
+ggsave("combined_plot.png", combined_plot, width = 12, height = 6, dpi = 300)
 
 # test the effects of river and distance to river mouth on the water quality PC's
 # anova PC1 (chemical water quality)
