@@ -338,3 +338,19 @@ summary(model_pc2a)
 # compared models
 anova (model_pc2, model_pc2a)
 # AIC model pc2 is lower and the pvalue < 0.001 indicating to keep the random effect in the model
+
+
+# take average values for PC1 and PC2 for every transect so the number of observations is reduced to 94 to be used in SEM
+PCA_data <- pca_with_meta |>
+  group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date) |>
+  dplyr::summarise(
+    chemical_water_quality_PC1 = mean(PC1),
+    visible_water_quality_PC2 = mean(PC2),
+    .groups = "drop"
+  )
+
+# save as csv to use in SEM
+write.csv(PCA_data, "PCA_data.csv", row.names = FALSE)
+
+
+
