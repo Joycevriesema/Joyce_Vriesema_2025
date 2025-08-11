@@ -46,6 +46,9 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
   summarise(total_count= sum(count))|>
   filter(bird_species_ID=="Pied kingfisher")
 
+# save as csv file --> using for Structural Equation Modelling (SEM)
+write.csv(data_bird, "data_bird.csv", row.names = FALSE)
+
 # old exploratory graphs
 ggplot(data_bird, aes(x= as.factor(date), y= total_count, fill= transect_ID))+
   geom_bar(stat="identity", position = "dodge")
