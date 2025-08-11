@@ -56,6 +56,9 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
   group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date, fish_type ) |>
   summarise(total_count= n())
 
+# save as csv for later use in SEM
+write.csv(fish_data, "fish_data.csv", row.names = FALSE)
+
 # exploratory graph small schooling fish
 ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
        aes( x= distance_to_river_mouth, y= total_count, fill= river))+
