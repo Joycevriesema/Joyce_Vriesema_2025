@@ -5,6 +5,8 @@ library(tidyverse)  # includes dplyr, ggplot2 and tidyr
 library(lme4)       # for mixed models
 library(lmerTest)   # for tests of significance of mixed-effects models
 library(MASS)       # for negative binomial models
+library(multcomp)   # registers cld() method for emmGrid
+library(multcompView) # generates the letters
 library(emmeans)    # pairwise comparison
 
 # load bird data and filter out old data (5-Feb-2025 & 8-Feb-2025)
@@ -182,28 +184,9 @@ anova(m1)
 # river site does not have an affect on bird densities
 # distance to river mouth has a significant effect on bird densities *
 summary(m1)
-# Tree significant higher bird densities
+# tree significant higher bird densities
 # mid distance to river mouth has significant lower bird density than mouth
-# far distance has not signficantly lower bird densities than mouth
-# variance between transects 
-
-# try model without random effect
-m1a <- lm(birds_per_100m ~ habitat_main + river + distance_to_river_mouth, data = birds_meter_shoreline) 
-anova(m1a)
-# habitat type significant effect on bird density
-# river site significant effect on bird density
-# distance to river mouth significant effect on bird density
-summary(m1a)
-# Tree significant higher bird densities
-# river Robana significantly higher bird density than Robana
-# mid distance to river mouth has significant lower bird density than mouth
-# far distance has not signficantly lower bird densities than mouth
-
-# compare models 
-anova(m1,m1a)
-# AIC of model m1 is much lower than m1a
-# p value <0.001 meaning transect_ID as a random effect improves the model fit,meaning there is meaningful variation in bird density between transects that cannot be captured by the fixed effects alone
-
+# far distance has not significantly lower bird densities than mouth
 
 # pairwise comparisons for m1
 emm <- emmeans(m1, ~ river+ distance_to_river_mouth)
@@ -213,7 +196,7 @@ pairs(emm)
 # mid significantly lower than far
 
 # get letters
-cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
+cld_dist <- cld(emm, Letters = letters, adjust = "tukey")
 letters_df <- as.data.frame(cld_dist)
 letters_df <- letters_df |>
   mutate(
