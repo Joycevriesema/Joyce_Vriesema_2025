@@ -51,14 +51,7 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
 # save as csv file --> using for Structural Equation Modelling (SEM)
 write.csv(data_bird, "data_bird.csv", row.names = FALSE)
 
-# old exploratory graphs
-ggplot(data_bird, aes(x= as.factor(date), y= total_count, fill= transect_ID))+
-  geom_bar(stat="identity", position = "dodge")
-
-ggplot(data_bird, aes(x= transect_ID, y= total_count, fill= transect_ID))+
-  geom_boxplot()
-
-# boxplot pied kingfishers
+#### boxplot count pied kingfishers/transect ####
 ggplot(data_bird, aes(x = distance_to_river_mouth, y = total_count, fill = river)) +
   geom_boxplot(
     color = "black",    
@@ -96,14 +89,15 @@ ggplot(data_bird, aes(x = distance_to_river_mouth, y = total_count, fill = river
   )
 
 
-#### bird counts corrected for visible tree volume along the shoreline
+#### count pied kingfisher corrected for visible tree volume along the shoreline ####
+
 # join data_bird with data_trees, keep 94 observations of the bird df
 data_trees <- read.csv("data_trees.csv")
 data_bird_trees <- left_join(data_bird, data_trees, by = c("transect_ID", "habitat_detailed", "habitat_main", "habitat_detailed_2", "river", "distance_to_river_mouth"))
 
 # calculate the number of birds per meter shoreline counted
 # for papyrus this is the total number of bird counts / 500 m shoreline (the whole transect length)
-# for tree this is the total number of bird counts / total visible circumfence
+# for tree this is the total number of bird counts / total visible circumference
 birds_meter_shoreline <- data_bird_trees |>
   mutate(
     birds_per_meter = case_when(
@@ -114,7 +108,7 @@ birds_meter_shoreline <- data_bird_trees |>
     birds_per_100m = birds_per_meter * 100
   )
 
-# plot tree volume for the different habitat combinations with symbols
+#### count pied kingfisher for different visible tree volumes ####
 ggplot(birds_meter_shoreline|> dplyr:: filter(habitat_main == "Trees"), aes(x = total_visible_tree_volume, y = total_count)) +
   geom_point(aes(color = habitat_detailed, shape = habitat_detailed), size = 3) +
   geom_smooth(method = "lm", se = TRUE, color = "black", linetype = "solid") +
@@ -132,7 +126,7 @@ ggplot(birds_meter_shoreline|> dplyr:: filter(habitat_main == "Trees"), aes(x = 
   )
 
 
-# plot bird counts per 100 meter shoreline
+#### boxplot and statistics count pied kingfishers/500m shoreline ####
 ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
   geom_boxplot(
     color = "black",     
@@ -169,42 +163,44 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     plot.margin = margin(10, 10, 10, 10)
   )
 
-#### model analysis birds per meter shoreline ####
-# make factors 
-birds_meter_shoreline <- birds_meter_shoreline |>
+# make factors
+birds_meter_shoreline <- birds_meter_shoreline |> 
   mutate(
     habitat_main = as.factor(habitat_main),
     river = as.factor(river),
     distance_to_river_mouth = factor(distance_to_river_mouth, levels = c("Mouth", "Mid", "Far")),  # set reference
-    transect_ID = as.factor(transect_ID)
-  )
-m1 <- lmer(birds_per_100m ~ habitat_main + river + distance_to_river_mouth + (1 | transect_ID), data = birds_meter_shoreline)
+    transect_ID = as.factor(transect_ID))
+
+# make model
+m1 <- lmer(birds_per_100m ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID), data = birds_meter_shoreline)
+
 anova(m1)
-# habitat type had a significant effect on bird densities **
-# river site does not have an affect on bird densities
-# distance to river mouth has a significant effect on bird densities *
+# habitat type had a significant effect on bird densities ***
+# river does not have an affect on bird densities
+# distance to river mouth has a significant effect on bird densities **
+# interaction between habitat main and distance to river mouth **
+
 summary(m1)
 # tree significant higher bird densities
 # mid distance to river mouth has significant lower bird density than mouth
-# far distance has not significantly lower bird densities than mouth
+# far distance has not significantly lower bird densities than mouth, but there is a trend
 
 # pairwise comparisons for m1
-emm <- emmeans(m1, ~ river+ distance_to_river_mouth)
+emm <- emmeans(m1, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
 pairs(emm)
-# mouth significantly higher than mid
-# mouth not significantly higher than far
-# mid significantly lower than far
 
-# get letters
-cld_dist <- cld(emm, Letters = letters, adjust = "tukey")
+# create letters
+cld_dist <- cld(emm, Letters = letters)
+cld_dist
 letters_df <- as.data.frame(cld_dist)
 letters_df <- letters_df |>
-  mutate(
-    y_pos = max(birds_meter_shoreline$total_count) * 1.05 + (row_number() - 1) * 0.5
-  ) %>%
-  ungroup()
+  mutate(y_pos = 80) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+  
 
-
+# plot with letters
 plot_birds_meter_shoreline <- ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100m, fill = river)) +
   geom_boxplot(position = position_dodge(width = 0.75),
     color = "black",     
@@ -226,7 +222,7 @@ plot_birds_meter_shoreline <- ggplot(birds_meter_shoreline, aes(x = distance_to_
   ) +
   geom_text(
     data = letters_df,
-    aes(x = distance_to_river_mouth, y = y_pos, label = .group, group= river),
+    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
     color = "black",
     size = 4,
     fontface = "bold",
@@ -250,6 +246,7 @@ plot_birds_meter_shoreline <- ggplot(birds_meter_shoreline, aes(x = distance_to_
     plot.margin = margin(10, 10, 10, 10)
   )
 plot_birds_meter_shoreline
+
 # save the plot
 ggsave("plotbirds per meter shoreline.png", plot_birds_meter_shoreline, width = 12, height = 6, dpi = 300)
 
