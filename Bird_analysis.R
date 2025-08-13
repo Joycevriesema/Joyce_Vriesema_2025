@@ -1,13 +1,13 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse)  # includes dplyr, ggplot2 and tidyr
-library(lme4)       # for mixed models
-library(lmerTest)   # for tests of significance of mixed-effects models
-library(MASS)       # for negative binomial models
-library(multcomp)   # registers cld() method for emmGrid
+library(tidyverse)    # includes dplyr, ggplot2 and tidyr
+library(lme4)         # for mixed models
+library(lmerTest)     # for tests of significance of mixed-effects models
+library(MASS)         # for negative binomial models
+library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
-library(emmeans)    # pairwise comparison
+library(emmeans)      # pairwise comparison
 
 # load bird data and filter out old data (5-Feb-2025 & 8-Feb-2025)
 data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=0&single=true&output=csv") |>
@@ -183,7 +183,7 @@ anova(m1)
 summary(m1)
 # tree significant higher bird densities
 # mid distance to river mouth has significant lower bird density than mouth
-# far distance has not significantly lower bird densities than mouth, but there is a trend
+# far distance has not significantly higher bird densities than mouth, but there is a trend
 
 # pairwise comparisons for m1
 emm <- emmeans(m1, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
