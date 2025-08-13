@@ -54,18 +54,24 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
            observation %in% c("S1","S2","S3")~"Small schooling fish"
          ))|>
   group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date, fish_type ) |>
-  summarise(total_count= n())
+  summarise(total_count= n()) |>
+  pivot_wider(names_from = fish_type,
+  values_from = total_count,
+  names_prefix = "",
+  values_fill = 0) 
+
+
+
 
 # save as csv for later use in SEM
 write.csv(fish_data, "fish_data.csv", row.names = FALSE)
 
 # exploratory graph small schooling fish
-ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
-       aes( x= distance_to_river_mouth, y= total_count, fill= river))+
+ggplot(fish_data, aes( x= distance_to_river_mouth, y= `Small schooling fish`, fill= river))+
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
-  scale_y_log10()+
+  #scale_y_log10()+
   theme_minimal(base_size = 14) +
   theme(
     axis.title = element_text(size = 13, face="bold"),
@@ -97,15 +103,18 @@ ggplot(fish_data |>dplyr::filter(fish_type == "Large predatory fish"),
   labs(y="School count / 500 m ", title="Large predatory fish")
 
 #### model for small schools (papyrus and trees included) ####
-fish_schools <- fish_data |>
-  dplyr:: filter(fish_type == "Small schooling fish")
-fish_schools$river <- as.factor(fish_schools$river)
-fish_schools$transect_ID <- as.factor(fish_schools$transect_ID)  
+fish_data$river <- as.factor(fish_data$river)
+fish_data$transect_ID <- as.factor(fish_data$transect_ID) 
+fish_data$habitat_main <- as.factor(fish_data$habitat_main)
 
 # count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model
-glmm_schools <- glmer(total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
-                         data = fish_schools,
+glmm_schools <- glmer(`Small schooling fish` ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID),
+                         data = fish_data,
                          family = poisson)
+library(car)
+
+Anova(glmm_schools, type = 3) 
+
 summary(glmm_schools)
 # significantly lower school count at Robana river 
 # significantly higher school count at mid distance compared to mouth
