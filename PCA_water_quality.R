@@ -62,14 +62,21 @@ summary(pca_result)
 
 biplot(pca_result,xlab="PC1 48%",ylab="PC2 25%")
 
-# points 376 and 697 suggest outliers
+# korte selectie van paar outliers
+data_water_selected <- data_water |> 
+  slice(c(377, 740, 622))
+  
+write.csv(data_water_selected, "data_water_selected.csv", row.names = F)
+
+# points 376, 621 and 739 suggest outliers
 # point 376 has a very high turbidity, very low conductivity and low TDS, depth 0.46
 # point 376 was recorded at 11:07:58, which coincides with the exact start time of the transect, seconds moved = 2 and meters moved = 2  suggesting the multiprobe may not yet have been fully submerged. The shallow depth (0.46m) supports this assumption. Partial submersion may also explain the unusually high HDO saturation and turbidity, as the sensors may have measured surface water or even been partially exposed to air.
+# there is some time issue with the multimeter probe therefore it could be that the measurement already started but, while the transect was not yet started
 
-# point 697: TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface, point 696 is 0.81 meter and point 697 is 0.47 and 698 also 0.47 so maybe the probe was drawn a bit to the surface
+# point 621: TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface, point 696 is 0.81 meter and point 697 is 0.47 and 698 also 0.47 so maybe the probe was drawn a bit to the surface
 # remove these two outliers from the data set, as these might nog be representative measurements
 pca_input2 <- data_water |>
-  dplyr::slice(c(-377,-698)) |>
+  dplyr::slice(c(-377, -740)) |>
   dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
   filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
 
