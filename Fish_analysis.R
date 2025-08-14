@@ -111,15 +111,13 @@ fish_data$habitat_main <- as.factor(fish_data$habitat_main)
 glmm_schools <- glmer(`Small schooling fish` ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID),
                          data = fish_data,
                          family = poisson)
-library(car)
-
-Anova(glmm_schools, type = 3) 
 
 summary(glmm_schools)
+# significantly lower school counts at tree habitat
 # significantly lower school count at Robana river 
 # significantly higher school count at mid distance compared to mouth
 # not significantly higher school count at far distance compared to mouth
-# some variance between transects
+# little variance between transects
 
 # test the poisson model for overdispersion
 overdisp_fun <- function(glmm_schools) {
