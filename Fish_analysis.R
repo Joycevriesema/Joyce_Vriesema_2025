@@ -1,12 +1,16 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse)  # includes dplyr, ggplot2, tidyr
-library(lme4)       # for mixed models
-library(lmerTest)   # for tests of significance of mixed-effects models
-library(MASS)       # for negative binomial models
-library(emmeans)    # pairwise comparison
-library(glmmTMB)    # for negative binomial model including random effects
+library(tidyverse)    # includes dplyr, ggplot2, tidyr
+library(lme4)         # for mixed models
+library(lmerTest)     # for tests of significance of mixed-effects models
+library(MASS)         # for negative binomial models
+library(emmeans)      # pairwise comparison
+library(glmmTMB)      # for negative binomial model including random effects
+library(multcomp)     # registers cld() method for emmGrid
+library(multcompView) # generates the letters
+library(car)          # for Anova test
+
 
 # load fish data
 fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=946923967&single=true&output=csv")|>
@@ -50,8 +54,8 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
            transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6", "tree_3", "tree_4","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"
          ),
          fish_type= case_when(
-           observation %in% c("H","V","O","B")~"Large predatory fish",
-           observation %in% c("S1","S2","S3")~"Small schooling fish"
+           observation %in% c("H","V","O","B")~"Large_predatory_fish",
+           observation %in% c("S1","S2","S3")~"Small_schooling_fish"
          ))|>
   group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date, fish_type ) |>
   summarise(total_count= n()) |>
@@ -60,14 +64,11 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
   names_prefix = "",
   values_fill = 0) 
 
-
-
-
 # save as csv for later use in SEM
 write.csv(fish_data, "fish_data.csv", row.names = FALSE)
 
 # exploratory graph small schooling fish
-ggplot(fish_data, aes( x= distance_to_river_mouth, y= `Small schooling fish`, fill= river))+
+ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooling_fish, fill= river))+
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
@@ -94,8 +95,7 @@ ggplot(fish_data, aes( x= distance_to_river_mouth, y= `Small schooling fish`, fi
     "Robana" = "#56B4E9"))
 
 # exploratory graph large predatory fish
-ggplot(fish_data |>dplyr::filter(fish_type == "Large predatory fish"), 
-       aes( x= distance_to_river_mouth, y= total_count, fill= river))+
+ggplot(fish_data, aes( x= distance_to_river_mouth, y= Large_predatory_fish, fill= river))+
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
@@ -107,16 +107,14 @@ fish_data$river <- as.factor(fish_data$river)
 fish_data$transect_ID <- as.factor(fish_data$transect_ID) 
 fish_data$habitat_main <- as.factor(fish_data$habitat_main)
 
-# count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model
-glmm_schools <- glmer(`Small schooling fish` ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID),
-                         data = fish_data,
-                         family = poisson)
+# count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model and include interaction terms
+glmm_schools <- glmer(Small_schooling_fish ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID), data = fish_data,family = poisson)
 
 summary(glmm_schools)
 # significantly lower school counts at tree habitat
 # significantly lower school count at Robana river 
 # significantly higher school count at mid distance compared to mouth
-# not significantly higher school count at far distance compared to mouth
+# significantly higher school count at far distance compared to mouth
 # little variance between transects
 
 # test the poisson model for overdispersion
@@ -131,48 +129,50 @@ overdisp_fun <- function(glmm_schools) {
 }
 
 overdisp_fun(glmm_schools)
-# dispersion ratio = 8.2 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
+# dispersion ratio = 10.17 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
 
-# try negative binomial model
-nb_schools <- glmmTMB(
-  total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
-  data = fish_schools,
+# try negative binomial model because of overdispersion
+nb_schools <- glmmTMB(Small_schooling_fish ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID),
+  data = fish_data,
   family = nbinom2
 )
 summary(nb_schools)
-# significant lower school counts at Robana river 
-# significant higher school counts at mid distance compared to mouth
-# no significant higher school counts 
-# variance of transect_ID is really low so exclude from the model
-
+# variance of transect_ID is really low so this suggest to exclude the random effect from the model
 
 # negative binomial model without random effect
-nb_schools2 <- glm.nb(total_count ~ river + distance_to_river_mouth, data = fish_schools)
+nb_schools2 <- glm.nb(Small_schooling_fish ~ habitat_main * river * distance_to_river_mouth, data = fish_data)
 summary(nb_schools2)
-# Significant lower school count at Robana
+# not significant higher school counts for tree habitat
+# significant higher school counts at Robana
 # significant higher at mid distance
-# not significant higher at far distance
+# significant higher at far distance
+
+# perform Anova on negative binomial model
+Anova(nb_schools2)
+# no significant difference between habitat types
+# significant difference between rivers 
+# significant difference between distance to river mout
+# no interaction effects
 
 # pairwise comparison
-emm <- emmeans(nb_schools2, ~ river + distance_to_river_mouth)
+emm <- emmeans(nb_schools2, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
 pairs(emm)
 
-# get the significance letters
-cld_dist <- multcomp::cld(emm, Letters = letters, adjust = "tukey")
+# create letters
+cld_dist <- cld(emm, Letters = letters)
+cld_dist
 letters_df <- as.data.frame(cld_dist)
-letters_df <- letters_df %>%
-  group_by(river, distance_to_river_mouth) %>%
-  mutate(
-    y_pos = max(fish_schools$total_count) * 1.05 + (row_number() - 1) * 0.5
-  ) %>%
-  ungroup()
+letters_df <- letters_df |>
+  mutate(y_pos = 80) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
 
 # make plot with significance letters
-plot_fish <- ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish"), 
-         aes( x= distance_to_river_mouth, y= total_count, fill= river))+
+plot_fish <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooling_fish, fill= river))+
   geom_boxplot(position = position_dodge(width = 0.75))+
   facet_grid(~habitat_main)+
-  scale_y_log10() +
   theme(text= element_text(size=14))+
   theme_minimal(base_size = 14) +
   theme(
@@ -192,7 +192,7 @@ plot_fish <- ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish
   )+
   geom_text(
     data = letters_df,
-    aes(x = distance_to_river_mouth, y = y_pos, label = .group, group= river),
+    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
     color = "black",
     size = 4,
     fontface = "bold",
@@ -204,6 +204,8 @@ plot_fish <- ggplot(fish_data |>dplyr::filter(fish_type == "Small schooling fish
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))
 plot_fish
+
+
 # save the plot
 ggsave("plot small fish schools.png", plot_fish, width = 12, height = 6, dpi = 300)
 
