@@ -1,12 +1,14 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse)  # includes dplyr, ggplot2 and tidyr
-library(lme4)       # for mixed models
-library(lmerTest)   # for tests of significance of mixed-effects models
-library(MASS)       # for negative binomial models
-library(emmeans)    # pairwise comparison
-library(patchwork)  # combine multiple ggplot2 plots into one layout 
+library(tidyverse)    # includes dplyr, ggplot2 and tidyr
+library(lme4)         # for mixed models
+library(lmerTest)     # for tests of significance of mixed-effects models
+library(MASS)         # for negative binomial models
+library(emmeans)      # pairwise comparison
+library(patchwork)    # combine multiple ggplot2 plots into one layout
+library(multcomp)     # registers cld() method for emmGrid
+library(multcompView) # generates the letters
 
 # load data_water
 data_water <- read.csv("data_water.csv") |>
