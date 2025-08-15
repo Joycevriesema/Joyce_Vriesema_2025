@@ -60,23 +60,20 @@ pca_result <- prcomp(pca_input,center=T, scale. = TRUE)
 pca_result
 summary(pca_result)
 
-biplot(pca_result,xlab="PC1 48%",ylab="PC2 25%")
+biplot(pca_result,xlab="PC1 49%",ylab="PC2 24%")
 
-# korte selectie van paar outliers
-data_water_selected <- data_water |> 
-  slice(c(377, 740, 622))
-  
-write.csv(data_water_selected, "data_water_selected.csv", row.names = F)
-
-# points 376, 621 and 739 suggest outliers
+# points 376, 621 and 739 seem to be outliers, in the original dataframe of data_water these are rows 377, 622 and 740
 # point 376 has a very high turbidity, very low conductivity and low TDS, depth 0.46
 # point 376 was recorded at 11:07:58, which coincides with the exact start time of the transect, seconds moved = 2 and meters moved = 2  suggesting the multiprobe may not yet have been fully submerged. The shallow depth (0.46m) supports this assumption. Partial submersion may also explain the unusually high HDO saturation and turbidity, as the sensors may have measured surface water or even been partially exposed to air.
-# there is some time issue with the multimeter probe therefore it could be that the measurement already started but, while the transect was not yet started
+# there is some time issue with the Manta multimeter probe therefore it could be that the measurement already started but, while the transect was not yet started
 
-# point 621: TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface, point 696 is 0.81 meter and point 697 is 0.47 and 698 also 0.47 so maybe the probe was drawn a bit to the surface
-# remove these two outliers from the data set, as these might nog be representative measurements
+# point 621: TDS relatively low, conductivity low, turbidity high, depth 0.47, suggest that the probe is held more close to the surface
+# point 739 also has low conductivity and TDS.
+# most values of conductivity in the df are above 100 and TDS above 70, these three data points deviate strongly
+# remove these three outliers from the data set, as these might not be representative measurements
+
 pca_input2 <- data_water |>
-  dplyr::slice(c(-377, -740)) |>
+  dplyr::slice(c(-377,-622,-740)) |>
   dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
   filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
 
@@ -84,12 +81,12 @@ pca_result <- prcomp(pca_input2,center=T, scale. = TRUE)
 pca_result
 summary(pca_result)
 
-biplot(pca_result, xlab = "PC1 (48%)", ylab = "PC2 (28%)")
+biplot(pca_result, xlab = "PC1 (51%)", ylab = "PC2 (26%)")
 # now the plot looks better, still there seems to be a cluster of points to the right
 
 # try PCA with averaged data
 pca_input_avg <- data_water |>
-  dplyr::slice(c(-377, -698)) |>
+  dplyr::slice(c(-377,-622, -740)) |>
   dplyr::filter(if_all(c(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS),
                        ~ !is.na(.) & !is.infinite(.))) |>
   dplyr::group_by(transect_ID) |>
@@ -113,11 +110,12 @@ pca_result_avg <- prcomp(
 pca_result_avg
 summary(pca_result_avg)
 
-biplot(pca_result_avg,xlab="PC1 53%",ylab="PC2 36%")
-# so the raw data explains 48+25= 73% of all variation
-# averaged data explains 53+36= 89% of all variation
+biplot(pca_result_avg,xlab="PC1 53%",ylab="PC2 37%")
+# so the raw data explains 51+26= 76% of all variation
+# averaged data explains 53+37= 90% of all variation
 
-# comparing the two biplots, the arrows of temp, turb, cond and TDS seem to change direction, so try o find out why this is
+# comparing the two biplots, the arrows of temp, turb, cond and TDS seem to change direction
+# try o find out why this is
 
 # compute correlation matrices
 cor_raw <- cor(pca_input2, use = "pairwise.complete.obs")
@@ -136,19 +134,18 @@ cor_compare <- left_join(cor_raw_df, cor_avg_df, by = c("Var1", "Var2")) |>
 
 # view table
 print(cor_compare)
-# temperature vs turbidity changes from 0.14 (weak positive) in raw to 0.51 (moderate positive) in averaged.
-# ORP vs turbidity flips from 0.21 (positive) in raw to -0.15 (negative) in averaged.
-# conductivity vs turbidity increases from 0.41 (moderate) in raw to 0.85 (very strong positive) in averaged.
-# conductivity vs temp flips from nearly zero (-0.007) in raw to 0.56 (moderate positive) in averaged.
-# pH vs turbidity flips from -0.16 (weak negative) in raw to 0.24 (weak positive) in averaged.
-# TDS vs temperature flips from -0.007 in raw to 0.56 (moderate positive) in averaged.
-# TDS vs turbidity rises from 0.41 (moderate) in raw to 0.85 (very strong positive) in averaged
-# conductivity vs pH flips from -0.19 (negative) in raw to +0.04 (near zero positive) in averaged.
-# HDO vs turbidity shifts from -0.07 (near zero) in raw to 0.24 (weak positive) in averaged.
-# HDO_sat vs turbidity shifts from -0.05 in raw to 0.27 in averaged.
+# temperature vs turbidity changes from 0.07 (weak positive) in raw to 0.50 (moderate positive) in averaged.
+# ORP vs turbidity flips from 0.23 (positive) in raw to -0.08 (negative) in averaged.
+# conductivity vs turbidity increases from 0.44 (moderate) in raw to 0.87 (very strong positive) in averaged.
+# conductivity vs temp flips from (-0.11) in raw to 0.47 (moderate positive) in averaged.
+# pH vs turbidity flips from -0.20 (weak negative) in raw to 0.15 (weak positive) in averaged.
+# TDS vs temperature flips from -0.11 in raw to 0.47 (moderate positive) in averaged.
+# TDS vs turbidity rises from 0.44 (moderate) in raw to 0.86 (very strong positive) in averaged
+# HDO vs turbidity shifts from -0.11 (near zero) in raw to 0.2 (weak positive) in averaged.
+# HDO_sat vs turbidity shifts from -0.09 in raw to 0.23 in averaged.
 
-# the averaging pca changed correlation and might hide variability 
-# I want to use the clustering of the parameters to give indication of water aeration and water clarity so it might be better to have enough variability in the data and choose for the raw data instead of averaging data
+# the averaging pca changed correlation, or increased strength of correlations and might hide variability 
+# I want to use the clustering of the parameters to give indication of chemical water quality and visible water quality, so it might be better to have enough variability in the data and choose for the raw data instead of averaging data
 
 # make plot
 # get row indices to align the meta data (categories) with the rows of the pca input
@@ -195,7 +192,7 @@ loadings$PC1 <- loadings$PC1 * arrow_scale
 loadings$PC2 <- loadings$PC2 * arrow_scale
 
 # plot
-ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
+plot1 <- ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
   geom_point(size = 3.5, alpha= 0.9) +
   geom_segment(data = loadings,
                aes(x = 0, y = 0, xend = PC1, yend = PC2),
@@ -224,12 +221,16 @@ ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
   coord_fixed() +
   theme_minimal() +
   scale_color_manual(values = c("#332288", "#44AA99", "#DDCC77", "#AA4499", "#88CCEE"))
+plot1
 
-# from the PCA plot it seems that HDO saturation, HDO, pH and temperature are clustered over PC1
-# these factors give an indication about water aeration, chemical water quality
-# conductivity, TDS and turbidity cluster together over PC2, these factors give an indication about water clarity (visible water quality)
+# from the PCA plot it seems that HDO saturation, HDO, pH and temperature are clustered over PC1 and ORP in opposite direction
+# these factors give an indication about water aeration -->chemical water quality
+# conductivity, TDS and turbidity cluster together over PC2, these factors give an indication about water clarity --> visible water quality
 
-# with these PCA results it is possible to plot the water parameters together in one plot instead of every parameters separately
+# save the plot
+ggsave("PCA.png", plot1 , width = 12, height = 6, dpi = 300)
+
+# with these PCA results it is possible to plot the water parameters according to the PCA axis in one plot instead of every parameters separately
 # therefore need to extract the PCA values and make a data frame of it
 
 # extract PCA values and add as column to data water
@@ -239,12 +240,63 @@ scores <- as.data.frame(pca_result$x)
 meta <- data_water[rows_to_keep, ]  
 pca_with_meta <- cbind(meta, scores)
 
-# plot PC1 which represents water aeration (chemical water quality)
+
+# test the effects of habitat, river and distance to river mouth on the PCA axis
+# anova PC1 (chemical water quality)
+model_pc1 <- lmer(PC1 ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID), data = pca_with_meta)
+anova(model_pc1)
+# habitat type significant **
+# river significant effect *
+# distance to river mouth highly significant ***
+summary(model_pc1)
+# trees significantly higher
+# Robana significantly higher 
+# far distance is significantly higher than mouth
+# but zero variance of transect_ID, so remove from the model
+
+# test without the random effect
+model_pc1a <- lm(PC1 ~ habitat_main * river * distance_to_river_mouth, data = pca_with_meta)
+anova(model_pc1a)
+# habitat not significant
+# river marginally significant 0.06
+# distance to river mouth highly significant ***
+
+# compare models
+anova(model_pc1, model_pc1a)
+# AIC lower for model pc1a and the p=1 so take out random effect
+
+# pairwise comparisons for model_pc1a
+emm <- emmeans(model_pc1a, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
+pairs(emm)
+
+# create letters
+cld_dist <- cld(emm, Letters = letters)
+cld_dist
+letters_df <- as.data.frame(cld_dist)
+letters_df <- letters_df |>
+  mutate(y_pos = 80) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
+# plot PC1 which represents water aeration (chemical water quality) + significance letters
 plot1 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
-  labs(x= "Distance to river mouth", y= "Water aeration/oxidation (PC1)")+
+  labs(x= "Distance to river mouth", y= "Chemical water quality (PC1)")+
+  coord_cartesian(ylim = c(-5, 10))+
+  scale_y_continuous(breaks = seq(-5, 10, by = 2.5))+
+  geom_text(
+    data = letters_df,
+    aes(x = distance_to_river_mouth, y = Inf, label = group_label, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    vjust=1.8,
+    inherit.aes = FALSE
+  )+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
@@ -266,12 +318,61 @@ plot1 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= r
   )
 plot1
 
+# anova PC2
+model_pc2 <- lmer(PC2 ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID) , data = pca_with_meta)
+anova(model_pc2)
+# habitat not significant
+# river significant effect **
+# significant effect of distance to river mouth
+# almost marginally signficant of interaction habitat:river and habitat:distance to river
+summary(model_pc2)
+# some variance between transects
+# Robana significantly higher values 
+# mid distance signficantly lower than mouth --> lower value for water clarity actually means a better water quality, cause lower values of turbditity, TDS and cond
+# far distance significantly higher than mouth
+
+# try model without random effect
+model_pc2a <- lm(PC2 ~ habitat_main * river * distance_to_river_mouth, data = pca_with_meta)
+anova(model_pc2a)
+# every parameter is highly significant
+summary(model_pc2a)
+
+# compare models
+anova (model_pc2, model_pc2a)
+# AIC model pc2 is lower and the pvalue < 0.001 indicating to keep the random effect in the model
+
+# pairwise comparisons for model_pc1a
+emm2 <- emmeans(model_pc2, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
+pairs(emm2)
+
+# create letters
+cld_dist2 <- cld(emm2, Letters = letters)
+cld_dist2
+letters_df2 <- as.data.frame(cld_dist2)
+letters_df2 <- letters_df2 |>
+  mutate(y_pos = 80) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
 # plot PC2 which represents water clarity (visible water quality)
 plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
-  labs(x= "Distance to river mouth", y= "Water clarity (PC2)")+
+  labs(x= "Distance to river mouth", y= "Visible water quality (PC2)")+
+  coord_cartesian(ylim = c(-5, 10))+
+  scale_y_continuous(breaks = seq(-5, 10, by = 2.5))+
+  geom_text(
+    data = letters_df2,
+    aes(x = distance_to_river_mouth, y = Inf, label = group_label, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    vjust=1.8,
+    inherit.aes = FALSE
+  )+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
@@ -294,62 +395,31 @@ plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= r
 plot2
 
 # make combined plot
-combined_plot <- plot1 | plot2
+plot2 <- plot2 + theme(strip.text.x = element_blank())
+
+combined_plot <-
+  (plot1 +
+     theme(
+       axis.title.x = element_blank(),
+       axis.text.x  = element_blank(),
+       axis.ticks.x = element_blank()
+     )) /
+  (plot2 + theme(strip.text.x = element_blank())) +
+  plot_layout(guides = "collect", heights = c(1, 1)) &
+  theme(
+    legend.position = "right",
+    axis.title.y = element_text(size = 10, face = "bold"),  # y-label size
+    axis.text.y  = element_text(size = 12)                  # y tick size
+  )
+
 print(combined_plot)
 ggsave("combined_plot.png", combined_plot, width = 12, height = 6, dpi = 300)
 
-# test the effects of river and distance to river mouth on the water quality PC's
-# anova PC1 (chemical water quality)
-model_pc1 <- lmer(PC1 ~ river + distance_to_river_mouth + (1 | transect_ID), data = pca_with_meta)
-anova(model_pc1)
-# river no significant effect
-# distance to river mouth significant effect
-summary(model_pc1)
-# Robana not significantly higher 
-# mid distance not significantly higher than mouth
-# far distance is significantly lower than mouth
-# little variance of transect ID
 
-# test without the random effect
-model_pc1a <- lm(PC1 ~ river + distance_to_river_mouth, data = pca_with_meta)
-anova(model_pc1a)
-summary(model_pc1a)
-# now Robana river significantly higher??
-# mid distance significantly higher than mouth
-# far distance significantly lower than mouth
-
-# compare models
-anova(model_pc1, model_pc1a)
-# AIC lower for model pc1 and the p<0.05 so keep the random effect included in the model
-
-# anova PC2
-model_pc2 <- lmer(PC2 ~ river + distance_to_river_mouth + (1 | transect_ID) , data = pca_with_meta)
-anova(model_pc2)
-# river had a significant effect
-# significant effect of distance to river mouth
-summary(model_pc2)
-# some variance between transects
-# Robana significantly higher values 
-# mid distance signficantly lower than mouth --> lower value for water clarity actually means a better water quality, cause lower values of turbditity, TDS and cond
-# far distance not significantly lower than mouth
-
-# try model without random effect
-model_pc2a <- lm(PC2 ~ river + distance_to_river_mouth, data = pca_with_meta)
-anova(model_pc2a)
-# both river and distance to river highly significant
-summary(model_pc2a)
-# Robana significantly higher 
-# mid distance signifcantly lower than mouth
-# far distance significantly lower than mouth
-
-# compared models
-anova (model_pc2, model_pc2a)
-# AIC model pc2 is lower and the pvalue < 0.001 indicating to keep the random effect in the model
-
-
-# take average values for PC1 and PC2 for every transect so the number of observations is reduced to 94 to be used in SEM
+#### data preparation for Structural Equation Modelling SEM ####
+# take average values for PC1 and PC2 for every transect + date combination so the number of observations is reduced to 94 and matches the number of observations in the different datasets
 PCA_data <- pca_with_meta |>
-  group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date) |>
+  group_by(transect_run_ID,transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date) |>
   dplyr::summarise(
     chemical_water_quality_PC1 = mean(PC1),
     visible_water_quality_PC2 = mean(PC2),
