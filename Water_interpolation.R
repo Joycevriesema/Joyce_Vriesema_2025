@@ -6,7 +6,7 @@ library(exiftoolr)
 library(fuzzyjoin)
 library(exifr)
 
-# load data_water_photos and filter out old data (5-Feb-2025 & 8-Feb-2025) and very incomplete data (tree_5, tree_6, pap_6, tree_7 and tree_8 on 13-Feb-2025)
+# load data_water_photos and filter out old data (5-Feb-2025 & 8-Feb-2025) and very incomplete data (tree_5, tree_6, pap_6, tree_7 and tree_8 on 13-Feb-2025) that is repeated on the day after
 data_water_photos <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=1825209523&single=true&output=csv") %>%
   dplyr::filter(date != "5-Feb-2025" & date != "8-Feb-2025") %>%
   dplyr::filter(!(transect_ID == "pap_6" & date == "13-Feb-2025") & 
