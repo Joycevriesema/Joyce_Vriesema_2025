@@ -113,3 +113,46 @@ psych::pairs.panels(SEM_data %>% dplyr::select(river_dummy, habitat_dummy, dista
 # pied kingfisher has a negative correlation with habitat *
 # habitat has a negative correlation with small schooling fish **
 # habitat has a negative correlation with large predatory fish ***
+
+# standardize the variables of interest. This causes the multiple regression to yield standardized regression coefficients, independent of the scale of measurement of each.
+SEM_data_std <- SEM_data |>
+  dplyr::select(distance, habitat_dummy, river_dummy, chemical_water_quality_PC1, visible_water_quality_PC2,
+         `Small schooling fish`, `Large predatory fish`, `Pied kingfisher`) |>
+  scale() |>
+  as_tibble() |>
+  rename(
+    pied_kingfisher       = `Pied kingfisher`,
+    small_schooling_fish  = `Small schooling fish`,
+    large_predatory_fish  = `Large predatory fish`
+  )
+
+# run the multiple regression
+multreg_std<-lm(pied_kingfisher ~ distance + habitat_dummy + river_dummy + chemical_water_quality_PC1 + visible_water_quality_PC2 + small_schooling_fish + large_predatory_fish, data=SEM_data_std)
+summary(multreg_std)
+# the standardized coefficients give an estimate of the weight of each path in this diagram
+# estimate values
+# distance 0.06
+# habitat -0.22
+# river -0.17
+# chemical water quality 0.09
+# visible water quality 0.27 *
+# small schooling fish -0.25 *
+# large predatory fish 0.16
+# These results suggest that visible water quality and small schooling fish has the most important effect on number of pied kingfishers
+
+# However the multiple regression tests how much variation is explained by a predictor that is not explained by the other predictors in the model. So when two predictors are strongly correlated, each may not explain variation in the response independently, why the regression of each with the response may be highly significant.
+# path analysis (form of SEM) can analyse causal relations between the different predictors, instead of hypothesizing that they all directly affect the response variable
+
+# make SEM model and fit with lavaan 
+pied_model <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy + chemical_water_quality_PC1 + visible_water_quality_PC2 + small_schooling_fish + large_predatory_fish
+small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1 + large_predatory_fish
+                  visible_water_quality_PC2 ~ river_dummy + distance
+                  chemical_water_quality_PC1~ river_dummy + distance
+                  large_predatory_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1
+                  pied_kingfisher ~ habitat_dummy' 
+
+pied_model.fit <- lavaan::sem(pied_model, data= SEM_data_std)
+
+# goodness and badness of fit measures of the model
+# the goodness of fit measures CFI and TLI should be \>0.9 for the model to be accepted, while the 'badness of fit' measures RMSEA and SRMR should be be \<0.1 for the model to be accepted
+# if these parameters are not in these ranges, then your causal model is not supported by the data, and you test a different model. this can involve the inclusion of different predictors, or testing an alternative causal structure among the predictors.
