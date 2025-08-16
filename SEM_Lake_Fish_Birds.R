@@ -38,8 +38,7 @@ fish_data <- fish_data %>%
   dplyr::left_join(data_transect, by = c("transect_ID", "date"))
 
 # join dataframes
-# joinn birds with fish according to transect_runID
-joined_data <- data_bird |>
+joined_data <- PCA_data |>
   left_join(
     fish_data |>
       dplyr::select(-one_of(setdiff(intersect(names(data_bird), names(fish_data)), "transect_run_ID"))),
@@ -49,14 +48,29 @@ joined_data <- data_bird |>
     current_names <- names(.)
     left_join(
       .,
-      PCA_data |>
-        dplyr::select(-one_of(setdiff(intersect(current_names, names(PCA_data)), "transect_run_ID"))),
+      data_bird |>
+        dplyr::select(-one_of(setdiff(intersect(current_names, names(data_bird)), "transect_run_ID"))),
       by = "transect_run_ID"
     )
   }
 
+# load the dataframe with distance to river mouth
+distance_to_river <- read.csv("Distance_to_river_mouth.csv")|>
+  rename(river= HubName,
+         transect_ID= Transect,
+         distance= HubDist) |>
+  mutate(
+    transect_ID = str_to_lower(transect_ID),
+    transect_ID = str_replace(transect_ID, "([a-z]+)([0-9]+)$", "\\1_\\2")
+  )
 
-
+# merge distance to river mouth dataframe with the joined dataframe
+SEM_data <- joined_data |>
+  left_join(
+    distance_to_river |>
+      dplyr::select(transect_ID, river, distance),
+    by = c("transect_ID", "river")
+  )
 
 
 
