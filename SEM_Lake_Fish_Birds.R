@@ -4,6 +4,7 @@ rm(list = ls())
 library(tidyverse) # includes dplyr, ggplot2
 library(lavaan)    # SEM modelling
 
+#### data preparation ####
 # combine datasets of fish, birds and water quality to have one big dataframe with 94 observations in total for every parameter
 # load datasets: data_bird, fish_data and PCA_data
 data_bird <- read.csv("data_bird.csv") |>
@@ -65,13 +66,50 @@ distance_to_river <- read.csv("Distance_to_river_mouth.csv")|>
   )
 
 # merge distance to river mouth dataframe with the joined dataframe
+# river and habitat_main are still categorical variables, to use the lavaan package for the SEM, need to create dummy variables with values of 0 and 1
 SEM_data <- joined_data |>
   left_join(
     distance_to_river |>
       dplyr::select(transect_ID, river, distance),
     by = c("transect_ID", "river")
-  )
+  )|>
+  mutate(
+  river_dummy   = ifelse(river == "Mbalageti", 1, 0),   # 1 = Mbalageti, 0 = Robana
+  habitat_dummy = ifelse(habitat_main == "Papyrus", 1, 0)    # 1 = papyrus, 0 = trees
+)
 
 
+#### start SEM ####
+# variables of interest
+# river_dummy = river site with 1 = Mbalageti, 0 = Robana
+# habitat_dummy = habitat_main with # 1 = papyrus, 0 = trees
+# distance = distance to river mouth measured in meters
+# chemical_water_quality_PC1 = PC1 values, variables included: HDO, HDO-saturation, temperature, pH and oxidation reduction potential
+# visible_water_quality_PC2 = PC2 values, variables included: TDS, conductivity, turbidity 
+# Small schooling fish = number of school counts, represents the number of dagaa school counts
+# Large predatory fish = number of individual predatory fish
+# Pied kingfisher = number of Pied kingfisher counts along the shoreline
 
+# inspect linearity among the variables in a pairs panel plot
+psych::pairs.panels(SEM_data %>% dplyr::select(river_dummy, habitat_dummy, distance, chemical_water_quality_PC1, visible_water_quality_PC2, `Small schooling fish`, `Large predatory fish`, `Pied kingfisher`),
+                    stars = T, ellipses = F)
 
+# river has positive but weak correlation with chemical water quality
+# river has negative correlation with visible water quality ***
+# river positive correlation with schooling fish **
+# river positive correlation with large predatory fish *
+# river negative correlation with pied kingfisher ***
+# distance to river mouth has negative correlation with chemical water quality * --> so higher distance from river mouth leads to lower values of the chemical water quality
+# distance negative correlation with visible water quality
+# visible water quality negative correlation with small schooling fish ** --> lower values of visible water quality leads to higher amount of school fish --> lower values of visible water quality indicate lower values for conductivity, turbidity and TDS so suggesting cleared water
+# visible water quality has negative correlation with large predatory fish ** --> lower values of visible water quality indicate lower values for conductivity, turbidity and TDS so suggesting cleared water
+# visible water has positive correlation with Pied kingfisher ***--> higher values for visible water quality, so higher value sof TDS, conductivity and turbidity --> less clear water would suggest higher number of pied kingfishers
+# no correlation between chemical and visible water quality
+# chemical water quality has positive correlation with small schooling fish *** --> higher values for pH, temp, HDO etc give higher number of fish schools
+# chemical water quality has positive correlation with large predatory fish
+# small schooling fish and large predatory fish positive correlation ***
+# pied kingfisher has negative weaker correlation with small schooling fish *
+# pied kingfisher has a negative correlation with river types ***
+# pied kingfisher has a negative correlation with habitat *
+# habitat has a negative correlation with small schooling fish **
+# habitat has a negative correlation with large predatory fish ***
