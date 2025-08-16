@@ -114,16 +114,22 @@ psych::pairs.panels(SEM_data %>% dplyr::select(river_dummy, habitat_dummy, dista
 # habitat has a negative correlation with small schooling fish **
 # habitat has a negative correlation with large predatory fish ***
 
-# standardize the variables of interest. This causes the multiple regression to yield standardized regression coefficients, independent of the scale of measurement of each.
-SEM_data_std <- SEM_data |>
-  dplyr::select(distance, habitat_dummy, river_dummy, chemical_water_quality_PC1, visible_water_quality_PC2,
-         `Small schooling fish`, `Large predatory fish`, `Pied kingfisher`) |>
-  scale() |>
-  as_tibble() |>
-  rename(
+# standardize the continuous variables of interest that have different scale. This causes the multiple regression to yield standardized regression coefficients, independent of the scale of measurement of each. But for variables with values 0 and 1 don't standardize. The counts variables of fish and birds need to rescaled
+SEM_data_std <- within(SEM_data, {
+  distance                   <- as.numeric(scale(distance))
+  chemical_water_quality_PC1 <- as.numeric(scale(chemical_water_quality_PC1))
+  visible_water_quality_PC2  <- as.numeric(scale(visible_water_quality_PC2))
+})|>
+rename(
     pied_kingfisher       = `Pied kingfisher`,
     small_schooling_fish  = `Small schooling fish`,
     large_predatory_fish  = `Large predatory fish`
+  )|>
+dplyr::mutate(
+    dplyr::across(
+      c(pied_kingfisher, small_schooling_fish, large_predatory_fish),
+      ~ . / sd(., na.rm = TRUE) # dividing by their own SD
+    )
   )
 
 # run the multiple regression
@@ -132,8 +138,8 @@ summary(multreg_std)
 # the standardized coefficients give an estimate of the weight of each path in this diagram
 # estimate values
 # distance 0.06
-# habitat -0.22
-# river -0.17
+# habitat -0.45
+# river -0.38
 # chemical water quality 0.09
 # visible water quality 0.27 *
 # small schooling fish -0.25 *
@@ -144,15 +150,42 @@ summary(multreg_std)
 # path analysis (form of SEM) can analyse causal relations between the different predictors, instead of hypothesizing that they all directly affect the response variable
 
 # make SEM model and fit with lavaan 
-pied_model <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy + chemical_water_quality_PC1 + visible_water_quality_PC2 + small_schooling_fish + large_predatory_fish
-small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1 + large_predatory_fish
-                  visible_water_quality_PC2 ~ river_dummy + distance
-                  chemical_water_quality_PC1~ river_dummy + distance
-                  large_predatory_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1
-                  pied_kingfisher ~ habitat_dummy' 
+pied_model <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy +
+                    chemical_water_quality_PC1 + visible_water_quality_PC2 +
+                    small_schooling_fish + large_predatory_fish
+
+  small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1 +
+                         large_predatory_fish
+  large_predatory_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1
+
+  visible_water_quality_PC2 ~ river_dummy + distance
+  chemical_water_quality_PC1 ~ river_dummy + distance'
+                
 
 pied_model.fit <- lavaan::sem(pied_model, data= SEM_data_std)
 
 # goodness and badness of fit measures of the model
-# the goodness of fit measures CFI and TLI should be \>0.9 for the model to be accepted, while the 'badness of fit' measures RMSEA and SRMR should be be \<0.1 for the model to be accepted
+# the goodness of fit measures CFI and TLI should be >0.9 for the model to be accepted, while the badness of fit measures RMSEA and SRMR should be be <0.1 for the model to be accepted
 # if these parameters are not in these ranges, then your causal model is not supported by the data, and you test a different model. this can involve the inclusion of different predictors, or testing an alternative causal structure among the predictors.
+
+summary(pied_model.fit, standardized=T, fit.measures=T,rsquare=T)
+# CFI 0.76 so <0.9 and TLI 0.34 <0.9
+# RMSEA 0.2 and SRMR 0.12 both not <0.1 
+# parameters are outside the ranges so this model is not supported by the data, so try different model
+
+# new model
+pied_model2 <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy +
+                    chemical_water_quality_PC1 + visible_water_quality_PC2 +
+                    small_schooling_fish + large_predatory_fish
+
+  small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1 +
+                         large_predatory_fish
+  large_predatory_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1
+
+  visible_water_quality_PC2 ~ river_dummy + distance
+  chemical_water_quality_PC1 ~ distance'
+
+pied_model2.fit <- lavaan::sem(pied_model2, data= SEM_data_std)
+summary(pied_model2.fit, standardized=T, fit.measures=T,rsquare=T)
+
+# library semplot for pathway diagram
