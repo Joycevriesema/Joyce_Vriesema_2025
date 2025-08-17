@@ -187,5 +187,8 @@ pied_model2 <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy +
 
 pied_model2.fit <- lavaan::sem(pied_model2, data= SEM_data_std)
 summary(pied_model2.fit, standardized=T, fit.measures=T,rsquare=T)
+# CFI 0.77 so <0.9 and TLI 0.42 <0.9
+# RMSEA 0.19 and SRMR 0.12 both not <0.1 
+# parameters are outside the ranges so this model is not supported by the data, so try different model
 
 # library semplot for pathway diagram
