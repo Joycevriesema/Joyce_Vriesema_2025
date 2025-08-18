@@ -226,6 +226,7 @@ plot1
 # from the PCA plot it seems that HDO saturation, HDO, pH and temperature are clustered over PC1 and ORP in opposite direction
 # these factors give an indication about water aeration -->chemical water quality
 # conductivity, TDS and turbidity cluster together over PC2, these factors give an indication about water clarity --> visible water quality
+# seems some difference in aggregations of points between the two river types
 
 # save the plot
 ggsave("PCA.png", plot1 , width = 12, height = 6, dpi = 300)
@@ -249,7 +250,7 @@ anova(model_pc1)
 # river significant effect *
 # distance to river mouth highly significant ***
 summary(model_pc1)
-# trees significantly higher
+# papyrus significantly higher
 # Robana significantly higher 
 # far distance is significantly higher than mouth
 # but zero variance of transect_ID, so remove from the model
