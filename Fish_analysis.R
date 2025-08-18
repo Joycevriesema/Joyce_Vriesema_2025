@@ -10,6 +10,8 @@ library(glmmTMB)      # for negative binomial model including random effects
 library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
 library(car)          # for Anova test
+library(ZIM)          # zero-inflated models
+library(DHARMa)       # for Zero-inflated models
 
 
 # load fish data
@@ -108,10 +110,9 @@ fish_data$transect_ID <- as.factor(fish_data$transect_ID)
 fish_data$habitat_main <- as.factor(fish_data$habitat_main)
 
 # count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model and include interaction terms
-glmm_schools <- glmer(Small_schooling_fish ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID), data = fish_data,family = poisson)
+glmm_schools <- glmer(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID), data = fish_data,family = poisson)
 
 summary(glmm_schools)
-# significantly lower school counts at tree habitat
 # significantly lower school count at Robana river 
 # significantly higher school count at mid distance compared to mouth
 # significantly higher school count at far distance compared to mouth
@@ -129,10 +130,10 @@ overdisp_fun <- function(glmm_schools) {
 }
 
 overdisp_fun(glmm_schools)
-# dispersion ratio = 10.17 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
+# dispersion ratio = 9.79 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
 
-# try negative binomial model because of overdispersion
-nb_schools <- glmmTMB(Small_schooling_fish ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID),
+# try negative binomial model 
+nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID),
   data = fish_data,
   family = nbinom2
 )
@@ -140,22 +141,16 @@ summary(nb_schools)
 # variance of transect_ID is really low so this suggest to exclude the random effect from the model
 
 # negative binomial model without random effect
-nb_schools2 <- glm.nb(Small_schooling_fish ~ habitat_main * river * distance_to_river_mouth, data = fish_data)
-summary(nb_schools2)
-# not significant higher school counts for tree habitat
-# significant higher school counts at Robana
-# significant higher at mid distance
-# significant higher at far distance
-
+nb_schools2 <- glm.nb(Small_schooling_fish ~ river * distance_to_river_mouth, data = fish_data)
 # perform Anova on negative binomial model
-Anova(nb_schools2)
-# no significant difference between habitat types
-# significant difference between rivers 
-# significant difference between distance to river mout
-# no interaction effects
+Anova(nb_schools2, type =2)
+# signficant effect of river
+# significant efefct of distance to river mouth
+# significant interaction between river and distance to river mouth
+summary (nb_schools2)
 
 # pairwise comparison
-emm <- emmeans(nb_schools2, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
+emm <- emmeans(nb_schools2, ~ river * distance_to_river_mouth, drop = TRUE)
 pairs(emm)
 
 # create letters
@@ -163,7 +158,7 @@ cld_dist <- cld(emm, Letters = letters)
 cld_dist
 letters_df <- as.data.frame(cld_dist)
 letters_df <- letters_df |>
-  mutate(y_pos = 80) |>
+  mutate(y_pos = 100) |>
   mutate(group_label = gsub(" ", "", .group)) |>
   ungroup() |>
   drop_na()
@@ -172,7 +167,7 @@ letters_df <- letters_df |>
 # make plot with significance letters
 plot_fish <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooling_fish, fill= river))+
   geom_boxplot(position = position_dodge(width = 0.75))+
-  facet_grid(~habitat_main)+
+  #facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
   theme_minimal(base_size = 14) +
   theme(
@@ -197,7 +192,8 @@ plot_fish <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooli
     size = 4,
     fontface = "bold",
     position = position_dodge(width = 0.75),
-    inherit.aes = FALSE
+    inherit.aes = FALSE,
+    vjust=1.1
   )+
   labs(x= "Distance to river mouth", y="School count / 500 m ")+
   scale_fill_manual(values = c(
