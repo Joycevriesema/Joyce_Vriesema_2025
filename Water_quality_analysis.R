@@ -44,7 +44,9 @@ data_water <- read.csv("data_water.csv") |>
            transect_ID %in% c("pap_1", "pap_2", "tree_1", "tree_2") ~ "Mbalageti",
            transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6", "tree_3", "tree_4","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"
          ))
-
+# from PCA script it is clear there are three outliers, which are rows 377, 622 and 740 t=from the water dataframe 
+data_water <- data_water |>
+  dplyr::slice(c(-377,-622, -740))
 
 #### model Temperature ####
 m1 <- lmer(temp ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID), data = data_water)
@@ -60,11 +62,11 @@ anova (m1a)
 # river has significant effect ***
 # distance to river mouth significant *
 # interaction habitat:river **
-# interaction habitat:distance to river
+# interaction habitat:distance to river marginally
 summary(m1a)
 # Robana river significantly higher temp
-# mid distance not significantly higher than mouth
-# far not significantly higher than mouth
+# interaction between papyrus and Mbalageti --> lower temp
+# Mbalageti mouth pap differs significantly from pap mouth Robana and pap far Robana
 
 # likelihood ratio test to compare the linear mixed model and the fixed-effects model
 anova(m1, m1a)
@@ -76,6 +78,16 @@ pairs(emm)
 # significant difference between Mbalageti mouth papyrus and Robana mouth papyrus
 # significant difference between Mbalageti mouth papyrus and Robana far papyrus
 
+# create letters
+cld_dist <- cld(emm, Letters = letters)
+cld_dist
+letters_df <- as.data.frame(cld_dist)
+letters_df <- letters_df |>
+  mutate(y_pos = 33) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
 plot1 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=temp, fill= river))+
   geom_boxplot()+
   facet_grid(~habitat_main)+
@@ -85,6 +97,15 @@ plot1 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=temp, fill= river))
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
   theme_minimal(base_size = 14) +
+  geom_text(
+    data = letters_df,
+    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE
+  )+
   theme(
     axis.title = element_text(size = 13, face="bold"),
     axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
@@ -98,7 +119,7 @@ plot1 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=temp, fill= river))
     panel.grid.minor = element_blank(),
     panel.spacing = unit(1.2, "lines"),
     panel.border = element_rect(color = "black", size = 1, fill = NA),
-    plot.margin = margin(10, 10, 10, 10)
+    plot.margin = margin(10, 10, 10, 10) 
   )
 plot1
 
@@ -136,12 +157,31 @@ pairs(emm2)
 # differencne between Robana mouth trees and Robana far trees
 # Mbalageti Mid Trees - Robana Mid Trees 0.0038
 
+# create letters
+cld_dist2 <- cld(emm2, Letters = letters)
+cld_dist2
+letters_df2 <- as.data.frame(cld_dist2)
+letters_df2 <- letters_df2 |>
+  mutate(y_pos = 10) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
 plot2 <-ggplot(data_water, aes(x= distance_to_river_mouth, y=pH, fill= river))+
   geom_boxplot()+
   facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
   #scale_y_log10()+
   labs(x= "Distance to river mouth",y="pH ", title="b)")+
+  geom_text(
+    data = letters_df2,
+    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE
+  )+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
