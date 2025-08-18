@@ -48,6 +48,14 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
   summarise(total_count= sum(count))|>
   filter(bird_species_ID=="Pied kingfisher")
 
+# merge data with meta data
+# load data transect
+data_transect <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=1366617186&single=true&output=csv")|>
+  mutate(date=as.Date(date, format= "%d-%b-%Y"))
+
+data_bird <- data_bird |>
+  left_join(data_transect, by = c("transect_ID", "date"))
+
 # save as csv file --> using for Structural Equation Modelling (SEM)
 write.csv(data_bird, "data_bird.csv", row.names = FALSE)
 
@@ -93,7 +101,12 @@ ggplot(data_bird, aes(x = distance_to_river_mouth, y = total_count, fill = river
 
 # join data_bird with data_trees, keep 94 observations of the bird df
 data_trees <- read.csv("data_trees.csv")
-data_bird_trees <- left_join(data_bird, data_trees, by = c("transect_ID", "habitat_detailed", "habitat_main", "habitat_detailed_2", "river", "distance_to_river_mouth"))
+data_bird_trees <- data_bird |>
+  left_join(
+    data_trees,
+    by = c("transect_ID", "habitat_detailed", "habitat_main",
+           "habitat_detailed_2", "river", "distance_to_river_mouth")
+  )
 
 # calculate the number of birds per meter shoreline counted
 # for papyrus this is the total number of bird counts / 500 m shoreline (the whole transect length)
@@ -169,7 +182,10 @@ birds_meter_shoreline <- birds_meter_shoreline |>
     habitat_main = as.factor(habitat_main),
     river = as.factor(river),
     distance_to_river_mouth = factor(distance_to_river_mouth, levels = c("Mouth", "Mid", "Far")),  # set reference
-    transect_ID = as.factor(transect_ID))
+    transect_ID = as.factor(transect_ID),
+    weather= as.factor(weather))
+
+
 
 # make model
 m1 <- lmer(birds_per_100m ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID), data = birds_meter_shoreline)
@@ -249,6 +265,23 @@ plot_birds_meter_shoreline
 
 # save the plot
 ggsave("plotbirds per meter shoreline.png", plot_birds_meter_shoreline, width = 12, height = 6, dpi = 300)
+
+
+# model with transect_ID, weather, time and date as random effects
+birds_meter_shoreline <- birds_meter_shoreline |>
+  mutate(
+  date_f  = factor(date))
+
+m2 <- lmer(
+  birds_per_100m ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID) + (1 | date_f) + (1|weather) + (1|start_time_bird1),
+  data = birds_meter_shoreline, REML = TRUE
+)
+
+anova(m2)
+summary(m2)
+# all random effects are really small in their variance 
+# start_time has the smallest variance of all and transect the largest
+
 
 #### old model analysis papyrus transects  with count data ####
 # use Poisson regression model to test whether the total count of Pied kingfishers differs significantly between transects within each habitat type
