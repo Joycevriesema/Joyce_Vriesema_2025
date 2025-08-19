@@ -75,7 +75,13 @@ SEM_data <- joined_data |>
   )|>
   mutate(
   river_dummy   = ifelse(river == "Mbalageti", 1, 0),   # 1 = Mbalageti, 0 = Robana
-  habitat_dummy = ifelse(habitat_main == "Papyrus", 1, 0)    # 1 = papyrus, 0 = trees
+  habitat_dummy = ifelse(habitat_main == "Papyrus", 1, 0),    # 1 = papyrus, 0 = trees
+  close_to_mouth= case_when (distance_to_river_mouth %in% "Mouth" ~ 1, 
+                             distance_to_river_mouth %in% "Mid" ~ 0,
+                              distance_to_river_mouth %in% "Far" ~ 0),
+  close_to_human = case_when (distance_to_river_mouth %in% "Far" ~ 1,
+                              distance_to_river_mouth %in% "Mid" ~ 0,
+                              distance_to_river_mouth %in% "Mouth" ~ 0)
 )
 
 
@@ -192,3 +198,19 @@ summary(pied_model2.fit, standardized=T, fit.measures=T,rsquare=T)
 # parameters are outside the ranges so this model is not supported by the data, so try different model
 
 # library semplot for pathway diagram
+#### goede SEM ####
+pied_model <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy +
+                    chemical_water_quality_PC1 + visible_water_quality_PC2 +
+                    small_schooling_fish
+
+  small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1
+  visible_water_quality_PC2 ~ river_dummy + distance
+  chemical_water_quality_PC1 ~ river_dummy + distance'
+
+
+pied_model.fit <- lavaan::sem(pied_model, data= SEM_data_std)
+
+
+summary(pied_model.fit, standardized=T, fit.measures=T,rsquare=T)
+# CFI = 0.85, TLI= 0.54
+# RMSEA= 0.16, SRMR= 0.08
