@@ -10,8 +10,6 @@ library(glmmTMB)      # for negative binomial model including random effects
 library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
 library(car)          # for Anova test
-library(ZIM)          # zero-inflated models
-library(DHARMa)       # for Zero-inflated models
 
 
 # load fish data
@@ -65,6 +63,14 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
   values_from = total_count,
   names_prefix = "",
   values_fill = 0) 
+
+# merge data with meta data
+# load data transect
+data_transect <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=1366617186&single=true&output=csv")|>
+  mutate(date=as.Date(date, format= "%d-%b-%Y"))
+
+fish_data <- fish_data |>
+  left_join(data_transect, by = c("transect_ID", "date"))
 
 # save as csv for later use in SEM
 write.csv(fish_data, "fish_data.csv", row.names = FALSE)
@@ -204,6 +210,16 @@ plot_fish
 
 # save the plot
 ggsave("plot small fish schools.png", plot_fish, width = 12, height = 6, dpi = 300)
+
+
+# model with random effects included of transect_ID,date,start_time, waves and water_green
+
+nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID) + (1|date) + (1|waves) + (1|water_green)+ (1|start_time_fish),
+                      data = fish_data,
+                      family = nbinom2
+)
+summary(nb_schools)
+
 
 #### old model for small schools in papyrus transects ####
 school_pap <- fish_data |> 
