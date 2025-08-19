@@ -6,6 +6,11 @@ library(vegan)      # multivariate analysis of ecological community data
 library(psych)      # useful for panel plots of multivariate datasets
 library(ggrepel)    # label placement for ggplot2 to avoid overlapping text
 library(patchwork)  # combine multiple ggplot2 plots into one layout 
+library(lme4)         # for mixed models
+library(lmerTest)     # for tests of significance of mixed-effects models
+library(multcomp)     # registers cld() method for emmGrid
+library(multcompView) # generates the letters
+library(emmeans)      # pairwise comparison
 
 # load data_water
 data_water <- read.csv("data_water.csv") |>
@@ -14,9 +19,9 @@ data_water <- read.csv("data_water.csv") |>
          habitat_detailed = case_when(
            transect_ID %in% c("pap_1", "pap_2") ~ "Papyrus Mbalageti Mouth",
            transect_ID %in% c("pap_3", "pap_4") ~ "Papyrus Robana Mouth",
-           transect_ID %in% c("pap_5", "pap_6") ~ "Papyrus Robana Far",
+           transect_ID %in% c("pap_5", "pap_6") ~ "Papyrus Robana Mid",
            transect_ID %in% c("tree_1", "tree_2") ~ "Tree Mbalageti Mid",
-           transect_ID %in% c("tree_3", "tree_4") ~ "Tree Robana Mid",
+           transect_ID %in% c("tree_3", "tree_4") ~ "Tree Mbalageti Far",
            transect_ID %in% c("tree_5", "tree_6") ~ "Tree Robana Mouth",
            transect_ID %in% c("tree_7", "tree_8") ~ "Tree Robana Far",
            TRUE ~ NA_character_),
@@ -26,21 +31,21 @@ data_water <- read.csv("data_water.csv") |>
            TRUE ~ NA_character_),
          distance_to_river_mouth= case_when(
            transect_ID %in% c("pap_1", "pap_2", "pap_3", "pap_4", "tree_5", "tree_6") ~ "Mouth",
-           transect_ID %in% c("tree_1", "tree_2", "tree_3", "tree_4") ~ "Mid",
-           transect_ID %in% c("pap_5", "pap_6", "tree_7", "tree_8") ~ "Far"
+           transect_ID %in% c("tree_1", "tree_2","pap_5", "pap_6" ) ~ "Mid",
+           transect_ID %in% c("tree_7", "tree_8","tree_3", "tree_4") ~ "Far"
          ),
          distance_to_river_mouth= factor(distance_to_river_mouth, levels= c("Mouth", "Mid", "Far")),
-         habitat_detailed_2= case_when(
+         habitat_detailed2= case_when(
            transect_ID %in% c("pap_1", "pap_2") ~ "Mbalageti Mouth",
            transect_ID %in% c("pap_3", "pap_4","tree_5", "tree_6") ~ "Robana Mouth",
-           transect_ID %in% c("pap_5", "pap_6","tree_7", "tree_8") ~ "Robana Far",
+           transect_ID %in% c("tree_7", "tree_8") ~ "Robana Far",
+           transect_ID %in% c("pap_5", "pap_6") ~ "Robana Mid",
            transect_ID %in% c("tree_1", "tree_2") ~ "Mbalageti Mid",
-           transect_ID %in% c("tree_3", "tree_4") ~ "Robana Mid",
+           transect_ID %in% c("tree_3", "tree_4") ~ "Mbalageti Far",
            TRUE ~ NA_character_),
          river= case_when(
-           transect_ID %in% c("pap_1", "pap_2", "tree_1", "tree_2") ~ "Mbalageti",
-           transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6", "tree_3", "tree_4","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"
-         ))
+           transect_ID %in% c("pap_1", "pap_2", "tree_1", "tree_2","tree_3", "tree_4") ~ "Mbalageti",
+           transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"))
 
 
 # explore the correlations among the factors in a panel pairs plot
@@ -154,12 +159,18 @@ rows_to_keep <- as.numeric(rownames(pca_input2))
 # run PCA
 pca_result <- prcomp(pca_input2, center = TRUE, scale. = TRUE)
 
-# add the meta data (habitat categories) with the rows used in the PCA
-habitat_vector <- data_water$habitat_detailed_2[rows_to_keep]
+# add the meta data: habitat, river and distance with the rows used in the PCA
+habitat_vector <- data_water$habitat_detailed2[rows_to_keep]
+river_vector   <- data_water$river[rows_to_keep]
+dist_vector     <- data_water$distance_to_river_mouth[rows_to_keep]
 
-# extract PCA scores into a dataframe and add the habitat categories
-scores <- as.data.frame(pca_result$x)
-scores$habitat <- habitat_vector
+# extract PCA scores into a dataframe and add the meta data catgeories
+scores <- as.data.frame(pca_result$x) |>
+  mutate(
+    river = factor(river_vector, levels = c("Mbalageti","Robana")),
+    distance_to_river_mouth = factor(dist_vector, levels = c("Mouth","Mid","Far")),
+    habitat = habitat_vector
+  )
 
 # extract loadings (arrows) for the first pricinipal components PC1 and PC2 
 loadings <- as.data.frame(pca_result$rotation[, 1:2])  
@@ -192,35 +203,45 @@ loadings$PC1 <- loadings$PC1 * arrow_scale
 loadings$PC2 <- loadings$PC2 * arrow_scale
 
 # plot
-plot1 <- ggplot(scores, aes(x = PC1, y = PC2, color = habitat)) +
-  geom_point(size = 3.5, alpha= 0.9) +
+plot1 <- ggplot(scores, aes(x = PC1, y = PC2,
+                            color = river,
+                            shape = distance_to_river_mouth)) +
+  geom_point(size = 3, alpha = 0.9) +
+  stat_ellipse(
+    data = scores,
+    mapping = aes(PC1, PC2, group = distance_to_river_mouth,
+                  linetype = distance_to_river_mouth),
+    inherit.aes = FALSE,   # don't inherit color=river from the main ggplot
+    color = "black",
+    linewidth = 0.7,
+    type = "t", level = 0.95
+  ) + 
   geom_segment(data = loadings,
                aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               inherit.aes = FALSE,
                arrow = arrow(length = unit(0.25, "cm")),
                color = "black", linewidth = 0.5) +
-  geom_text_repel(
-    data = loadings,
-    aes(x = PC1, y = PC2, label = varname),
-    color = "black",
-    size = 5.5,
-    nudge_x = loadings$nudge_x,
-    nudge_y = loadings$nudge_y,
-    force_pull= 0.3,
-    segment.color = "black",     
-    segment.size = 0.2,          
-    box.padding = 0.4,          
-    point.padding = 0.2,      
-    min.segment.length = 0
-  )+
+  geom_text_repel(data = loadings,
+                  inherit.aes = FALSE,
+                  aes(x = PC1, y = PC2, label = varname),
+                  color = "black", size = 5.5,
+                  nudge_x = loadings$nudge_x, nudge_y = loadings$nudge_y,
+                  force_pull = 0.3, segment.color = "black",
+                  segment.size = 0.2, box.padding = 0.4,
+                  point.padding = 0.2, min.segment.length = 0) +
   labs(
-    title = "",
     x = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100), "%)"),
     y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)"),
-    color = "Habitat type"
+    color = "River", shape = "Distance to mouth"
   ) +
   coord_fixed() +
   theme_minimal() +
-  scale_color_manual(values = c("#332288", "#44AA99", "#DDCC77", "#AA4499", "#88CCEE"))
+  scale_color_manual(values = c("Mbalageti" = "#0072B2",
+                                "Robana"    = "#56B4E9")) +
+  scale_shape_manual(values = c("Mouth" = 1,   
+                                "Mid"   = 2,   
+                                "Far"   = 0))  
+
 plot1
 
 # from the PCA plot it seems that HDO saturation, HDO, pH and temperature are clustered over PC1 and ORP in opposite direction
@@ -281,23 +302,23 @@ letters_df <- letters_df |>
   drop_na()
 
 # plot PC1 which represents water aeration (chemical water quality) + significance letters
-plot1 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
+plot1 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth2, y = PC1, fill= river2)) +
   geom_boxplot()+
-  facet_grid(~habitat_main)+
+  #facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
   labs(x= "Distance to river mouth", y= "Chemical water quality (PC1)")+
   coord_cartesian(ylim = c(-5, 10))+
   scale_y_continuous(breaks = seq(-5, 10, by = 2.5))+
-  geom_text(
-    data = letters_df,
-    aes(x = distance_to_river_mouth, y = Inf, label = group_label, group= river),
-    color = "black",
-    size = 4,
-    fontface = "bold",
-    position = position_dodge(width = 0.75),
-    vjust=1.8,
-    inherit.aes = FALSE
-  )+
+  #geom_text(
+    #data = letters_df,
+    #aes(x = distance_to_river_mouth, y = Inf, label = group_label, group= river),
+    #color = "black",
+    #size = 4,
+    #fontface = "bold",
+    #position = position_dodge(width = 0.75),
+    #vjust=1.8,
+    #inherit.aes = FALSE
+  #)+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
@@ -320,7 +341,7 @@ plot1 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC1, fill= r
 plot1
 
 # anova PC2
-model_pc2 <- lmer(PC2 ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID) , data = pca_with_meta)
+model_pc2 <- lmer(PC2 ~ river2 * distance_to_river_mouth2 + (1 | transect_ID) , data = pca_with_meta)
 anova(model_pc2)
 # habitat not significant
 # river significant effect **
@@ -356,24 +377,15 @@ letters_df2 <- letters_df2 |>
   ungroup() |>
   drop_na()
 
+pca_with_meta$distance_to_river_mouth2 <- factor(pca_with_meta$distance_to_river_mouth2, levels= c("Mouth", "Mid", "Far"))
 # plot PC2 which represents water clarity (visible water quality)
-plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
+plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth2, y = PC2, fill= river2)) +
   geom_boxplot()+
-  facet_grid(~habitat_main)+
+  #facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
   labs(x= "Distance to river mouth", y= "Visible water quality (PC2)")+
   coord_cartesian(ylim = c(-5, 10))+
   scale_y_continuous(breaks = seq(-5, 10, by = 2.5))+
-  geom_text(
-    data = letters_df2,
-    aes(x = distance_to_river_mouth, y = Inf, label = group_label, group= river),
-    color = "black",
-    size = 4,
-    fontface = "bold",
-    position = position_dodge(width = 0.75),
-    vjust=1.8,
-    inherit.aes = FALSE
-  )+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))+
@@ -394,6 +406,17 @@ plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= r
     plot.margin = margin(10, 10, 10, 10)
   )
 plot2
+
+geom_text(
+  data = letters_df2,
+  aes(x = distance_to_river_mouth, y = Inf, label = group_label, group= river),
+  color = "black",
+  size = 4,
+  fontface = "bold",
+  position = position_dodge(width = 0.75),
+  vjust=1.8,
+  inherit.aes = FALSE
+)+
 
 # make combined plot
 plot2 <- plot2 + theme(strip.text.x = element_blank())

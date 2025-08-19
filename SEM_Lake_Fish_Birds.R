@@ -199,18 +199,13 @@ summary(pied_model2.fit, standardized=T, fit.measures=T,rsquare=T)
 
 # library semplot for pathway diagram
 #### goede SEM ####
-pied_model <- 'pied_kingfisher ~ distance + habitat_dummy + river_dummy +
-                    chemical_water_quality_PC1 + visible_water_quality_PC2 +
-                    small_schooling_fish
-
-  small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1
-  visible_water_quality_PC2 ~ river_dummy + distance
-  chemical_water_quality_PC1 ~ river_dummy + distance'
-
-
+pied_model <- 'pied_kingfisher ~ habitat_dummy + visible_water_quality_PC2 + small_schooling_fish
+small_schooling_fish ~ visible_water_quality_PC2 + chemical_water_quality_PC1'
+  
 pied_model.fit <- lavaan::sem(pied_model, data= SEM_data_std)
-
 
 summary(pied_model.fit, standardized=T, fit.measures=T,rsquare=T)
 # CFI = 0.85, TLI= 0.54
 # RMSEA= 0.16, SRMR= 0.08
+library(lavaanPlot)
+lavaanPlot(pied_model.fit, coefs=T, stand=T, graph_options = list(rankdir= "LR"))
