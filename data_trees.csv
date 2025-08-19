@@ -1,8 +1,8 @@
-"transect_ID","river","habitat_detailed","habitat_detailed_2","distance_to_river_mouth","habitat_main","total_tree_volume","total_visible_tree_volume","total_canopy_length","total_visible_circumference"
+"transect_ID","river","habitat_detailed","habitat_detailed2","distance_to_river_mouth","habitat_main","total_tree_volume","total_visible_tree_volume","total_canopy_length","total_visible_circumference"
 "tree_1","Mbalageti","Tree Mbalageti Mid","Mbalageti Mid","Mid","Trees",12706.9568856073,6640.73782106627,362,495.99498661469
 "tree_2","Mbalageti","Tree Mbalageti Mid","Mbalageti Mid","Mid","Trees",13184.478968953,6700.82078056618,282,373.371284625171
-"tree_3","Robana","Tree Robana Mid","Robana Mid","Mid","Trees",26121.5575164357,13588.3699744801,502,675.196022674864
-"tree_4","Robana","Tree Robana Mid","Robana Mid","Mid","Trees",15395.3747989168,8176.97662867168,351,462.787713302359
+"tree_3","Mbalageti","Tree Mbalageti Far","Mbalageti Far","Far","Trees",26121.5575164357,13588.3699744801,502,675.196022674864
+"tree_4","Mbalageti","Tree Mbalageti Far","Mbalageti Far","Far","Trees",15395.3747989168,8176.97662867168,351,462.787713302359
 "tree_5","Robana","Tree Robana Mouth","Robana Mouth","Mouth","Trees",14421.4810763039,7408.66087532813,286,375.571721668095
 "tree_6","Robana","Tree Robana Mouth","Robana Mouth","Mouth","Trees",2835.28736986479,2266.26640048334,51,123.646355708808
 "tree_7","Robana","Tree Robana Far","Robana Far","Far","Trees",7846.91305050391,3954.87245178785,229,299.358653319855
