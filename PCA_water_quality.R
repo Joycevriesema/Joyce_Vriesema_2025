@@ -12,8 +12,9 @@ library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
 library(emmeans)      # pairwise comparison
 library(ellipse)      # drawing ellipses in plots
-library(lubridate)
+library(lubridate)    # for day and time changes
 
+#### data preparation ####
 # load data_water
 data_water <- read.csv("data_water.csv") |>
   dplyr::mutate(transect_date_time = paste(transect_ID, substr(date_time_end, 1, 6), substr(date_time_start, 12, 16), sep = " "))|>
@@ -66,7 +67,7 @@ psych::pairs.panels(data_water |> dplyr::select(temp, pH, ORP, turb, cond, HDO, 
 # strong positive correlation between pH and HDO
 # strong negative correlation between pH and ORP
 
-# PCA with all data
+#### exploration PCA with all data ####
 pca_input <- data_water |>
   dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
   filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
@@ -92,11 +93,11 @@ pca_input2 <- data_water |>
   dplyr::select(temp, pH, ORP, turb, cond, HDO, HDO_sat, TDS)|>
   filter(if_all(everything(), ~ !is.na(.) & !is.infinite(.)))
 
-pca_result <- prcomp(pca_input2,center=T, scale. = TRUE)
-pca_result
-summary(pca_result)
+pca_result2 <- prcomp(pca_input2,center=T, scale. = TRUE)
+pca_result2
+summary(pca_result2)
 
-biplot(pca_result, xlab = "PC1 (51%)", ylab = "PC2 (26%)")
+biplot(pca_result2, xlab = "PC1 (51%)", ylab = "PC2 (26%)")
 # now the plot looks better, still there seems to be a cluster of points to the right
 
 # try PCA with averaged data
@@ -162,12 +163,12 @@ print(cor_compare)
 # the averaging pca changed correlation, or increased strength of correlations and might hide variability 
 # I want to use the clustering of the parameters to give indication of chemical water quality and visible water quality, so it might be better to have enough variability in the data and choose for the raw data instead of averaging data
 
-# make plot
+#### continue with the raw data ####
 # get row indices to align the meta data (categories) with the rows of the pca input
 rows_to_keep <- as.numeric(rownames(pca_input2))
 
 # run PCA
-pca_result <- prcomp(pca_input2, center = TRUE, scale. = TRUE)
+pca_result2a <- prcomp(pca_input2, center = TRUE, scale. = TRUE)
 
 # add the meta data: habitat, river and distance with the rows used in the PCA
 habitat_vector <- data_water$habitat_detailed2[rows_to_keep]
@@ -175,15 +176,16 @@ river_vector   <- data_water$river[rows_to_keep]
 dist_vector     <- data_water$distance_to_river_mouth[rows_to_keep]
 
 # extract PCA scores into a dataframe and add the meta data catgeories
-scores <- as.data.frame(pca_result$x) |>
+scores <- as.data.frame(pca_result2a$x) |>
   mutate(
     river = factor(river_vector, levels = c("Mbalageti","Robana")),
     distance_to_river_mouth = factor(dist_vector, levels = c("Mouth","Mid","Far")),
     habitat = habitat_vector
   )
 
+
 # extract loadings (arrows) for the first pricinipal components PC1 and PC2 
-loadings <- as.data.frame(pca_result$rotation[, 1:2])  
+loadings <- as.data.frame(pca_result2a$rotation[, 1:2])  
 # label the variable names
 loadings$varname <- rownames(loadings)
 loadings$varname <- dplyr::recode(
@@ -198,36 +200,12 @@ loadings$varname <- dplyr::recode(
 loadings$nudge_x <- 0
 loadings$nudge_y <- 0
 
-loadings$nudge_x[loadings$varname == "TDS"] <- 0.5
-loadings$nudge_x[loadings$varname == "conductivity"] <- -0.3
-loadings$nudge_x[loadings$varname == "turbidity"] <- -0.3
-loadings$nudge_x[loadings$varname == "temperature"] <- 0.1
-loadings$nudge_x[loadings$varname == "HDO"] <- 0.4
-loadings$nudge_x[loadings$varname == "HDO_saturation"] <- 0.4
-loadings$nudge_y[loadings$varname == "HDO_saturation"] <- -0.1
-loadings$nudge_y[loadings$varname == "ORP"] <- -0.1
-
 # scale arrows for visibility
 arrow_scale <- 4.5 
 loadings$PC1 <- loadings$PC1 * arrow_scale
 loadings$PC2 <- loadings$PC2 * arrow_scale
 
-# draw ellipses per river x distance to river mouth
-## Ellipses per river × distance_to_river_mouth (95%)
-ellipse_df <- scores %>%
-  group_by(river) %>%
-  group_split() %>%
-  lapply(function(df) {
-    e <- as.data.frame(ellipse::ellipse(stats::cov(df[,c("PC1","PC2")], use="complete.obs"),
-                                        centre = colMeans(df[,c("PC1","PC2")], na.rm = TRUE),
-                                        level = 0.95, npoints = 200))
-    colnames(e) <- c("x","y")
-    e$river <- df$river[1]
-    e$group <- e$river
-    e
-  }) %>% bind_rows()
-
-# plot
+#### PCA plot ####
 plot1 <- ggplot(scores, aes(x = PC1, y = PC2,
                             color = river,
                             shape = distance_to_river_mouth)) +
@@ -240,20 +218,14 @@ plot1 <- ggplot(scores, aes(x = PC1, y = PC2,
   geom_text_repel(data = loadings,
                   inherit.aes = FALSE,
                   aes(x = PC1, y = PC2, label = varname),
-                  color = "black", size = 5.5,
+                  color = "black", size = 3,
                   nudge_x = loadings$nudge_x, nudge_y = loadings$nudge_y,
                   force_pull = 0.3, segment.color = "black",
                   segment.size = 0.2, box.padding = 0.4,
                   point.padding = 0.2, min.segment.length = 0) +
-  geom_path(data = ellipse_df,
-            aes(x = x, y = y,
-                group = group),
-            inherit.aes = FALSE,
-            linewidth = 0.5,
-            show.legend = TRUE) +
-  labs(
-    x = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100), "%)"),
-    y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)"),
+   labs(
+    x = paste0("PC1 (", round(summary(pca_result2a)$importance[2, 1] * 100), "%)"),
+    y = paste0("PC2 (", round(summary(pca_result2a)$importance[2, 2] * 100), "%)"),
     color = "River", shape = "Distance to river mouth"
   ) +
   coord_fixed() +
@@ -269,31 +241,157 @@ plot1 <- ggplot(scores, aes(x = PC1, y = PC2,
   )
 
 plot1
-
-
 # from the PCA plot it seems that HDO saturation, HDO, pH and temperature are clustered over PC1 and ORP in opposite direction
 # these factors give an indication about water aeration -->chemical water quality
 # conductivity, TDS and turbidity cluster together over PC2, these factors give an indication about water clarity --> visible water quality
 # seems some difference in aggregations of points between the two river types
 
+# change the levels of mouth, mid and far --> into close, mid and far
+scores <- scores |>
+  mutate(distance_to_river_mouth =
+           fct_recode(distance_to_river_mouth, Close = "Mouth") |>
+           fct_relevel("Close","Mid","Far")) 
+
+# PCA plot with ellipses
+## 1) Build ellipse coordinates per (river × distance) ----
+ellipse_df <- scores %>%
+  group_by(river, distance_to_river_mouth) %>%
+  group_split() %>%
+  lapply(function(df) {
+    if (nrow(df) < 3) return(NULL)  # need ≥3 points
+    S <- stats::cov(df[, c("PC1","PC2")], use = "complete.obs")
+    if (any(!is.finite(S))) return(NULL)
+    e <- as.data.frame(ellipse::ellipse(
+      S,
+      centre  = colMeans(df[, c("PC1","PC2")], na.rm = TRUE),
+      level   = 0.95,
+      npoints = 200
+    ))
+    names(e) <- c("x","y")
+    e$river <- df$river[1]
+    e$distance_to_river_mouth <- df$distance_to_river_mouth[1]
+    e$group <- interaction(e$river, e$distance_to_river_mouth, drop = TRUE)
+    e
+  }) %>%
+  bind_rows()
+
+#loadings$nudge_x[loadings$varname == "TDS"] <- 0.5
+#loadings$nudge_x[loadings$varname == "conductivity"] <- -0.3
+loadings$nudge_x[loadings$varname == "turbidity"] <- -0.3
+loadings$nudge_x[loadings$varname == "temperature"] <- 0.1
+#loadings$nudge_x[loadings$varname == "HDO"] <- 0.4
+#loadings$nudge_x[loadings$varname == "HDO_saturation"] <- 0.4
+loadings$nudge_y[loadings$varname == "pH"] <- -0.1
+#loadings$nudge_y[loadings$varname == "ORP"] <- -0.1
+
+ggplot(scores, aes(PC1, PC2)) +
+  #geom_point(aes(color = river, shape = distance_to_river_mouth), size = 2, alpha = 0.9) +
+  geom_path(data = ellipse_df,
+            aes(x, y,
+                color = river,
+                linetype = distance_to_river_mouth,
+                group = group),
+            linewidth = 1) +
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               inherit.aes = FALSE,
+               arrow = arrow(length = unit(0.25, "cm")),
+               color = "black", linewidth = 0.5, show.legend = FALSE) +
+  geom_text_repel(data = loadings,
+                  inherit.aes = FALSE,
+                  aes(x = PC1, y = PC2, label = varname),
+                  color = "black", size = 4,
+                  nudge_x = loadings$nudge_x, nudge_y = loadings$nudge_y,
+                  force_pull = 0.3, segment.color = "black",
+                  segment.size = 0.2, box.padding = 0.4,
+                  point.padding = 0.2, min.segment.length = 0,
+                  fontface ="bold") +
+  coord_fixed() +
+  theme_minimal() +
+  scale_color_manual(name = "River",
+                     values = c("Mbalageti" = "#0072B2",
+                                "Robana"    = "#56B4E9")) +
+  scale_linetype_manual(name = "Distance to river mouth",
+                        values = c("Close" = "solid",
+                                   "Mid"   = "dashed",
+                                   "Far"   = "dotted")) +
+  guides(color = guide_legend(order = 1),
+         linetype = guide_legend(order = 2))+
+  labs(
+    x = paste0("PC1 (", round(summary(pca_result2a)$importance[2, 1] * 100), "%)"),
+    y = paste0("PC2 (", round(summary(pca_result2a)$importance[2, 2] * 100), "%)"),
+    color = "River", shape = "Distance to river mouth")
+
+
+
+
+ggplot(scores, aes(PC1, PC2)) +
+  # ellipses
+  geom_path(data = ellipse_df,
+            aes(x, y, color = river, linetype = distance_to_river_mouth, group = group),
+            linewidth = 1) +
+  # arrows
+  geom_segment(data = loadings,
+               aes(x = 0, y = 0, xend = PC1, yend = PC2),
+               inherit.aes = FALSE,
+               arrow = arrow(length = unit(0.25, "cm")),
+               color = "black", linewidth = 0.5, show.legend = FALSE) +
+  # labels (normal ones)
+  ggrepel::geom_text_repel(
+    data = subset(loadings, !varname %in% vars_to_raise),
+    aes(PC1, PC2, label = varname),
+    inherit.aes = FALSE,
+    color = "black", size = 4, fontface = "bold",
+    box.padding = 0.4, point.padding = 0.2,
+    segment.color = "black", segment.size = 0.2,
+    nudge_y = 0       # default
+  ) +
+  # labels (raise these two a bit)
+  ggrepel::geom_text_repel(
+    data = subset(loadings, varname %in% vars_to_raise),
+    aes(PC1, PC2, label = varname),
+    inherit.aes = FALSE,
+    color = "black", size = 4, fontface = "bold",
+    box.padding = 0.4, point.padding = 0.2,
+    segment.color = "black", segment.size = 0.2,
+    nudge_y = 0.35    # ↑ raise them; tweak as needed
+  ) +
+  coord_fixed() +
+  theme_minimal() +
+  scale_color_manual(name = "River", values = c("Mbalageti"="#0072B2","Robana"="#56B4E9")) +
+  scale_linetype_manual(name = "Distance to river mouth",
+                        values = c("Close"="solid","Mid"="dashed","Far"="dotted")) +
+  guides(color = guide_legend(order = 1),
+         linetype = guide_legend(order = 2)) +
+  labs(
+    x = paste0("PC1 (", round(summary(pca_result2a)$importance[2, 1]*100), "%)"),
+    y = paste0("PC2 (", round(summary(pca_result2a)$importance[2, 2]*100), "%)")
+  )
+
+
+
+
+
 # save the plot
 ggsave("PCA.png", plot1 , width = 12, height = 6, dpi = 300)
 
+
+#### continuing with the analysis
 # with these PCA results it is possible to plot the water parameters according to the PCA axis in one plot instead of every parameters separately
 # therefore need to extract the PCA values and make a data frame of it
 
 # extract PCA values and add as column to data water
-scores <- as.data.frame(pca_result$x)
+scores <- as.data.frame(pca_result2a$x)
 
 # add metadata of data water by matching rows
 meta <- data_water[rows_to_keep, ]  
 pca_with_meta <- cbind(meta, scores)
 
-# filter out the extra observations because taken after 12 PM and not all transects have been sampled even,y after 12 pm 
+# filter out the extra observations (run_ID "extra") these observations are taken after 12 PM and not all transects have been sampled even,y after 12 pm 
 pca_without_extra <- pca_with_meta |>
   filter(!coalesce(str_detect(run_ID, regex("extra", ignore_case = TRUE)), FALSE))
 
-# make time a factor with 6 levels from 7 until 12 hour
+# make time into a factor with 6 levels from 7 until 12 hour
 pca_without_extra <- pca_without_extra|>
   mutate(
     time_parsed = if (inherits(time, "POSIXt")) time else
@@ -302,91 +400,31 @@ pca_without_extra <- pca_without_extra|>
     hour_cont = lubridate::hour(time_parsed) +
       lubridate::minute(time_parsed)/60 +
       lubridate::second(time_parsed)/3600
-  ) %>%
-  filter(floor(hour_cont) %in% 7:12) %>%                             # keep 7–12 only
+  ) |>
+  filter(floor(hour_cont) %in% 7:12) |>                          
   mutate(hour = factor(floor(hour_cont), levels = 7:12, ordered = TRUE))
 
+# change the levels of mouth, mid and far --> into close, mid and far
+pca_without_extra <- pca_without_extra |>
+  mutate(distance_to_river_mouth =
+           fct_recode(distance_to_river_mouth, Close = "Mouth") |>
+           fct_relevel("Close","Mid","Far")) 
 
-m2 <- lmer(PC1 ~ river * distance_to_river_mouth + (1|waves) + (1 | date) + (1 | transect_ID) + (1 | hour),data = pca_without_extra, REML = TRUE)
+#### analysis water aeration ####
+# make model with fixed effects river and distance to river mouth
+# random effects waves, date, transect_ID and hour
+m1 <- lmer(PC1 ~ river * distance_to_river_mouth + (1|waves) + (1 | date) + (1 | transect_ID) + (1 | hour),data = pca_without_extra, REML = TRUE)
 
-anova(m2)
-# no significant effect of river, distance to river or interaction between river and distance to river mouth
-summary(m2)
+anova(m1)
+# no significant effect of river, distance to river or interaction river x distance to river mouth
+summary(m1)
 # variance date =2.36
 # variance transect_ID = 0.12
 # variance hour = 1.18
-# variance waves = 0.78 
-# variance of transect_ID and waves small so try different models
-
-# model same as m2 but without transect_ID
-m3 <- lmer(PC1 ~ river * distance_to_river_mouth + (1|waves) + (1 | date) + (1 | hour),data = pca_without_extra, REML = TRUE)
-anova(m3) # nothing significant 
-summary(m3)
-# variance date = 2.27
-# variance hour = 0.94
-# variance waves = 0.19
-
-# model same as m2 but without transect ID and waves as random effects
-m4 <- lmer(PC1 ~ river * distance_to_river_mouth + (1 | date) + (1 | hour),data = pca_without_extra, REML = TRUE)
-
-anova(m4)
-# nothing signficant 
-summary(m4)
-# variance date = 1.90
-# variance hour = 1.19
-
-# compare model fit
-AIC(m2,m3,m4) # model m2 has the lowest AIC value so seems the best model
-
-
-#### model with all observations so after 12 pm, run_ID extra included ####
-# make time a factor with 6 levels from 7 until 12 hour
-pca_with_meta <- pca_with_meta|>
-  mutate(
-    time_parsed = if (inherits(time, "POSIXt")) time else
-      lubridate::parse_date_time(as.character(time),
-                                 orders = c("H:M:S","H:M","Y-m-d H:M:S","Y-m-d H:M")),
-    hour_cont = lubridate::hour(time_parsed) +
-      lubridate::minute(time_parsed)/60 +
-      lubridate::second(time_parsed)/3600
-  ) %>%
-  filter(floor(hour_cont) %in% 7:12) %>%                             # keep 7–12 only
-  mutate(hour = factor(floor(hour_cont), levels = 7:12, ordered = TRUE))
-
-m1<- lmer(PC1 ~ river * distance_to_river_mouth + (1 | transect_ID) + (1|date)+ (1|hour) +(1|waves), data = pca_with_meta)
-anova(m1)
-# nothing significant
-summary(m1)
-# variance date = 2.48
-# variance transect = 0.12
-# variance hour = 0.88
-# variance waves = 0.80
-
-# model without transect_ID
-m1a <- lmer(PC1 ~ river * distance_to_river_mouth + (1|waves) + (1 | date) + (1 | hour),data = pca_with_meta, REML = TRUE)
-anova(m1a)
-# river significant effect
-# distance to river mouth
-summary(m1a)
-# variance date = 2.35
-# variance hour = 0.70
-# variance waves 0.86
-
-# model without waves and transect_ID
-m2a <- lmer(PC1 ~ river * distance_to_river_mouth + (1 | date) + (1 | hour),data = pca_with_meta, REML = TRUE)
-anova(m2a)
-# river and distance to river mouth significant 
-summary(m2a)
-# variance date 1.95
-# variance hour 0.87
-
-# compare models
-AIC(m1,m1a,m2a) # lowest AIC value for m1
-
-#### continue with m2 ####
+# variance waves = 0.17 
 
 # pairwise comparisons for m2
-emm <- emmeans(m2, ~ river * distance_to_river_mouth, drop = TRUE)
+emm <- emmeans(m1, ~ river * distance_to_river_mouth, drop = TRUE)
 pairs(emm)
 
 # create letters
@@ -399,12 +437,13 @@ letters_df <- letters_df |>
   ungroup() |>
   drop_na()
 
-# plot PC1 which represents water aeration + significance letters
+
+# plot PC1 representing water aeration + significance letters
 plot1 <- ggplot(pca_without_extra, aes(x = distance_to_river_mouth, y = PC1, fill= river)) +
   geom_boxplot()+
   theme(text= element_text(size=14))+
   labs(x= "Distance to river mouth", y= "Water aeration (PC1)")+
-  coord_cartesian(ylim = c(-5, 10))+
+  coord_cartesian(ylim = c(-5, 5))+
   scale_y_continuous(breaks = seq(-5, 10, by = 2.5))+
   geom_text(
     data = letters_df,
@@ -440,38 +479,18 @@ plot1
 
 
 #### analysis water turbidity ####
-# work with the without_extra data
-mpc2 <- lmer(PC2 ~ river * distance_to_river_mouth + (1|waves) + (1 | date) + (1 | transect_ID) + (1 | hour),data = pca_without_extra, REML = TRUE)
-anova(mpc2)
+m2 <- lmer(PC2 ~ river * distance_to_river_mouth + (1|waves) + (1 | date) + (1 | transect_ID) + (1 | hour),data = pca_without_extra, REML = TRUE)
+anova(m2)
 # significant effect of river ***
-# significant effect of interaction river and distance to river mouth
-summary(mpc2)
+# significant effect of interaction river and distance to river mouth *
+summary(m2)
 # variance date = 0.91
 # variance transect_ID = 0.21
 # variance hour = 0.52
 # variance waves = 0.15
 
-# try model without random effect waves
-mpc2a <- lmer(PC2 ~ river * distance_to_river_mouth + (1 | date) + (1 | transect_ID) + (1 | hour),data = pca_without_extra, REML = TRUE)
-anova(mpc2a)
-# only river significant effect
-summary(mpc2a)
-# variance date = 0.74
-# variance transectID = 0.17
-# variance hour = 0.46
-
-# model without transect and waves as random effects
-mpc2b <- lmer(PC2 ~ river * distance_to_river_mouth + (1 | date) + (1 | hour),data = pca_without_extra, REML = TRUE)
-anova(mpc2b)
-# river significant ***
-# river x distance significant ***
-
-
-# compare models
-AIC(mpc2, mpc2a,mpc2b) # mpc2 best fit model
-
-# pairwise comparisons for mpc2
-emm2 <- emmeans(mpc2, ~ river * distance_to_river_mouth, drop = TRUE)
+# pairwise comparisons for m2
+emm2 <- emmeans(m2, ~ river * distance_to_river_mouth, drop = TRUE)
 pairs(emm2)
 
 # create letters
@@ -484,14 +503,14 @@ letters_df2 <- letters_df2 |>
   ungroup() |>
   drop_na()
 
-pca_with_meta$distance_to_river_mouth <- factor(pca_with_meta$distance_to_river_mouth, levels= c("Mouth", "Mid", "Far"))
-# plot PC2 which represents water clarity (visible water quality)
-plot2 <- ggplot(pca_with_meta, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
+
+# plot PC2 water turbidity
+plot2 <- ggplot(pca_without_extra, aes(x = distance_to_river_mouth, y = PC2, fill= river)) +
   geom_boxplot()+
   #facet_grid(~habitat_main)+
   theme(text= element_text(size=14))+
   labs(x= "Distance to river mouth", y= "Water turbidity (PC2)")+
-  coord_cartesian(ylim = c(-5, 10))+
+  coord_cartesian(ylim = c(-2.5, 7.5))+
   scale_y_continuous(breaks = seq(-5, 10, by = 2.5))+
   geom_text(
     data = letters_df2,
@@ -527,31 +546,23 @@ plot2
 
 
 # make combined plot
-plot2 <- plot2 + theme(strip.text.x = element_blank())
+p <- (plot1 + labs(x = NULL)) + (plot2 + labs(x = NULL)) +
+  plot_layout(guides = "collect") & theme(legend.position = "right")
 
-combined_plot <-
-  (plot1 +
-     theme(
-       axis.title.x = element_blank(),
-       axis.text.x  = element_blank(),
-       axis.ticks.x = element_blank()
-     )) /
-  (plot2 + theme(strip.text.x = element_blank())) +
-  plot_layout(guides = "collect", heights = c(1, 1)) &
-  theme(
-    legend.position = "right",
-    axis.title.y = element_text(size = 10, face = "bold"),  # y-label size
-    axis.text.y  = element_text(size = 12)                  # y tick size
-  )
+xlab <- ggplot() + theme_void() +
+  annotate("text", x = 0.5, y = 0.5,
+           label = "Distance to river mouth",
+           fontface = "bold", size = 13 / .pt, hjust = 0.5, vjust = 0.5)
+combined_plot <- p / xlab + plot_layout(heights = c(1, 0.06))
+combined_plot
 
-print(combined_plot)
 ggsave("combined_plot.png", combined_plot, width = 12, height = 6, dpi = 300)
 
 
 #### data preparation for Structural Equation Modelling SEM ####
 # take average values for PC1 and PC2 for every transect + date combination so the number of observations is reduced to 94 and matches the number of observations in the different datasets
-PCA_data <- pca_with_meta |>
-  group_by(transect_run_ID,transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date) |>
+PCA_data <- pca_without_extra |>
+  group_by(transect_run_ID,transect_ID,river, habitat_detailed, habitat_detailed2, distance_to_river_mouth, habitat_main, date) |>
   dplyr::summarise(
     chemical_water_quality_PC1 = mean(PC1),
     visible_water_quality_PC2 = mean(PC2),
