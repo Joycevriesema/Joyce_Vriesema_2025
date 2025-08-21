@@ -1,8 +1,9 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse) # includes dplyr, ggplot2
-library(lavaan)    # SEM modelling
+library(tidyverse)  # includes dplyr, ggplot2
+library(lavaan)     # SEM modelling
+library(lavaanPlot) # plot SEM model
 
 #### data preparation ####
 # combine datasets of fish, birds and water quality to have one big dataframe with 94 observations in total for every parameter
@@ -207,5 +208,6 @@ pied_model.fit <- lavaan::sem(pied_model, data= SEM_data_std)
 summary(pied_model.fit, standardized=T, fit.measures=T,rsquare=T)
 # CFI = 0.85, TLI= 0.54
 # RMSEA= 0.16, SRMR= 0.08
-library(lavaanPlot)
+
+# make the pathway diagram
 lavaanPlot(pied_model.fit, coefs=T, stand=T, graph_options = list(rankdir= "LR"))
