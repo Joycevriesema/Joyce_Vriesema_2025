@@ -245,6 +245,12 @@ plot1 <- ggplot(scores, aes(x = PC1, y = PC2,
                   force_pull = 0.3, segment.color = "black",
                   segment.size = 0.2, box.padding = 0.4,
                   point.padding = 0.2, min.segment.length = 0) +
+  geom_path(data = ellipse_df,
+            aes(x = x, y = y,
+                group = group),
+            inherit.aes = FALSE,
+            linewidth = 0.5,
+            show.legend = TRUE) +
   labs(
     x = paste0("PC1 (", round(summary(pca_result)$importance[2, 1] * 100), "%)"),
     y = paste0("PC2 (", round(summary(pca_result)$importance[2, 2] * 100), "%)"),
@@ -263,12 +269,7 @@ plot1 <- ggplot(scores, aes(x = PC1, y = PC2,
   )
 
 plot1
-geom_path(data = ellipse_df,
-          aes(x = x, y = y,
-              group = group),
-          inherit.aes = FALSE,
-          linewidth = 0.5,
-          show.legend = TRUE) +
+
 
 # from the PCA plot it seems that HDO saturation, HDO, pH and temperature are clustered over PC1 and ORP in opposite direction
 # these factors give an indication about water aeration -->chemical water quality

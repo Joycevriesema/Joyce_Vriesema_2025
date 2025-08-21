@@ -52,13 +52,39 @@ data_bird <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeu
 data_transect <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeumB9AuvRjnobaDJLq76NWyPQrvnPdvP58Qxv5SGMt4LMKjxMQMREGnYdoIkO1oCfTOcqp1Z/pub?gid=1366617186&single=true&output=csv")|>
   mutate(date=as.Date(date, format= "%d-%b-%Y"))
 
+# join the two dataframes
 data_bird <- data_bird |>
   left_join(data_transect, by = c("transect_ID", "date"))
+
+# filter out the extra observations (run_ID contains "extra"). These observations were taken after 12 PM. Not every transects has been sampled evenly after 12 PM so exclude these observations from the dataset --> 10 observations will be excluded 
+data_bird <- data_bird |>
+  filter(!coalesce(str_detect(run_ID, regex("extra", ignore_case = TRUE)), FALSE))
+
+# make start_time_fish time a factor with 6 levels from 7 until 12 hour
+# make time a factor with 6 levels from 7 until 12 hour
+data_bird <- data_bird |>
+  mutate(
+    # extract a clean time like "9:29", "10:03", or "10:03:15"
+    start_time_token = str_extract(as.character(start_time_bird1),
+                                   "\\b\\d{1,2}:\\d{2}(?::\\d{2})?\\b"),
+    # add seconds if missing so hms() accepts it
+    start_time_fixed = if_else(
+      is.na(start_time_token), NA_character_,
+      if_else(str_detect(start_time_token, "^\\d{1,2}:\\d{2}$"),
+              paste0(start_time_token, ":00"),
+              start_time_token)
+    ),
+    start_time_hms = hms(start_time_fixed),
+    # hour factor with six levels (7–12). Values outside 7–12 will become NA.
+    start_hour_bird = factor(hour(start_time_hms), levels = 7:12, ordered = TRUE)
+  )
+
+
 
 # save as csv file --> using for Structural Equation Modelling (SEM)
 write.csv(data_bird, "data_bird.csv", row.names = FALSE)
 
-data_bird$distance_to_river_mouth2 <- factor(data_bird$distance_to_river_mouth2, levels= c("Mouth", "Mid", "Far"))
+data_bird$distance_to_river_mouth <- factor(data_bird$distance_to_river_mouth, levels= c("Mouth", "Mid", "Far"))
 
 #### boxplot count pied kingfishers/transect ####
 ggplot(data_bird, aes(x = distance_to_river_mouth, y = total_count, fill = river)) +

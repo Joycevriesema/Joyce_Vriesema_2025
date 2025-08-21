@@ -10,6 +10,7 @@ library(glmmTMB)      # for negative binomial model including random effects
 library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
 library(car)          # for Anova test
+library(lubridate)
 
 
 # load fish data
@@ -26,9 +27,9 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
          habitat_detailed = case_when(
            transect_ID %in% c("pap_1", "pap_2") ~ "Papyrus Mbalageti Mouth",
            transect_ID %in% c("pap_3", "pap_4") ~ "Papyrus Robana Mouth",
-           transect_ID %in% c("pap_5", "pap_6") ~ "Papyrus Robana Far",
+           transect_ID %in% c("pap_5", "pap_6") ~ "Papyrus Robana Mid",
            transect_ID %in% c("tree_1", "tree_2") ~ "Tree Mbalageti Mid",
-           transect_ID %in% c("tree_3", "tree_4") ~ "Tree Robana Mid",
+           transect_ID %in% c("tree_3", "tree_4") ~ "Tree Mbalageti Far",
            transect_ID %in% c("tree_5", "tree_6") ~ "Tree Robana Mouth",
            transect_ID %in% c("tree_7", "tree_8") ~ "Tree Robana Far",
            TRUE ~ NA_character_),
@@ -38,26 +39,26 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
            TRUE ~ NA_character_),
          distance_to_river_mouth= case_when(
            transect_ID %in% c("pap_1", "pap_2", "pap_3", "pap_4", "tree_5", "tree_6") ~ "Mouth",
-           transect_ID %in% c("tree_1", "tree_2", "tree_3", "tree_4") ~ "Mid",
-           transect_ID %in% c("pap_5", "pap_6", "tree_7", "tree_8") ~ "Far"
+           transect_ID %in% c("tree_1", "tree_2","pap_5", "pap_6" ) ~ "Mid",
+           transect_ID %in% c("tree_7", "tree_8","tree_3", "tree_4") ~ "Far"
          ),
          distance_to_river_mouth= factor(distance_to_river_mouth, levels= c("Mouth", "Mid", "Far")),
-         habitat_detailed_2= case_when(
+         habitat_detailed2= case_when(
            transect_ID %in% c("pap_1", "pap_2") ~ "Mbalageti Mouth",
            transect_ID %in% c("pap_3", "pap_4","tree_5", "tree_6") ~ "Robana Mouth",
-           transect_ID %in% c("pap_5", "pap_6","tree_7", "tree_8") ~ "Robana Far",
+           transect_ID %in% c("tree_7", "tree_8") ~ "Robana Far",
+           transect_ID %in% c("pap_5", "pap_6") ~ "Robana Mid",
            transect_ID %in% c("tree_1", "tree_2") ~ "Mbalageti Mid",
-           transect_ID %in% c("tree_3", "tree_4") ~ "Robana Mid",
+           transect_ID %in% c("tree_3", "tree_4") ~ "Mbalageti Far",
            TRUE ~ NA_character_),
          river= case_when(
-           transect_ID %in% c("pap_1", "pap_2", "tree_1", "tree_2") ~ "Mbalageti",
-           transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6", "tree_3", "tree_4","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"
-         ),
+           transect_ID %in% c("pap_1", "pap_2", "tree_1", "tree_2","tree_3", "tree_4") ~ "Mbalageti",
+           transect_ID %in% c("pap_3", "pap_4", "pap_5", "pap_6","tree_5", "tree_6", "tree_7", "tree_8") ~ "Robana"),
          fish_type= case_when(
            observation %in% c("H","V","O","B")~"Large_predatory_fish",
            observation %in% c("S1","S2","S3")~"Small_schooling_fish"
          ))|>
-  group_by(transect_ID,river, habitat_detailed, habitat_detailed_2, distance_to_river_mouth, habitat_main, date, fish_type ) |>
+  group_by(transect_ID,river, habitat_detailed, habitat_detailed2, distance_to_river_mouth, habitat_main, date, fish_type ) |>
   summarise(total_count= n()) |>
   pivot_wider(names_from = fish_type,
   values_from = total_count,
@@ -71,6 +72,29 @@ data_transect <- read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwi
 
 fish_data <- fish_data |>
   left_join(data_transect, by = c("transect_ID", "date"))
+
+# filter out the extra observations (run_ID contains "extra"). These observations were taken after 12 PM. Not every transects has been sampled evenly after 12 PM so exclude these observations from the dataset --> 10 observations will be excluded 
+fish_data <- fish_data |>
+  filter(!coalesce(str_detect(run_ID, regex("extra", ignore_case = TRUE)), FALSE))
+
+# make start_time_fish time a factor with 6 levels from 7 until 12 hour
+# make time a factor with 6 levels from 7 until 12 hour
+fish_data <- fish_data |>
+  mutate(
+    # extract a clean time like "9:29", "10:03", or "10:03:15"
+    start_time_token = str_extract(as.character(start_time_fish),
+                                   "\\b\\d{1,2}:\\d{2}(?::\\d{2})?\\b"),
+    # add seconds if missing so hms() accepts it
+    start_time_fixed = if_else(
+      is.na(start_time_token), NA_character_,
+      if_else(str_detect(start_time_token, "^\\d{1,2}:\\d{2}$"),
+              paste0(start_time_token, ":00"),
+              start_time_token)
+    ),
+    start_time_hms = hms(start_time_fixed),
+    # hour factor with six levels (7–12). Values outside 7–12 will become NA.
+    start_hour_fish = factor(hour(start_time_hms), levels = 7:12, ordered = TRUE)
+  )
 
 # save as csv for later use in SEM
 write.csv(fish_data, "fish_data.csv", row.names = FALSE)
@@ -110,13 +134,14 @@ ggplot(fish_data, aes( x= distance_to_river_mouth, y= Large_predatory_fish, fill
   scale_y_log10()+
   labs(y="School count / 500 m ", title="Large predatory fish")
 
+
 #### model for small schools (papyrus and trees included) ####
 fish_data$river <- as.factor(fish_data$river)
 fish_data$transect_ID <- as.factor(fish_data$transect_ID) 
 fish_data$habitat_main <- as.factor(fish_data$habitat_main)
 
 # count data with fixed effects of river site and distance to river mouth and random effect of transect ID included so taking a poisson model and include interaction terms
-glmm_schools <- glmer(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID), data = fish_data,family = poisson)
+glmm_schools <- glmer(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID) + (1|date)+ (1|start_hour_fish), data = fish_data,family = poisson)
 
 summary(glmm_schools)
 # significantly lower school count at Robana river 
@@ -136,24 +161,53 @@ overdisp_fun <- function(glmm_schools) {
 }
 
 overdisp_fun(glmm_schools)
-# dispersion ratio = 9.79 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
+# dispersion ratio = 420 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
 
 # try negative binomial model 
-nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID),
+nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID)+ (1|date)+ (1|start_hour_fish),
   data = fish_data,
   family = nbinom2
 )
+Anova(nb_schools)
+# river significant ***
+# distance to river significant ***
+# interaction river x distance to river mouth significant *
 summary(nb_schools)
-# variance of transect_ID is really low so this suggest to exclude the random effect from the model
+# variance of all random effects are really small
+# variance of transect ID and start_hour are very small
 
-# negative binomial model without random effect
-nb_schools2 <- glm.nb(Small_schooling_fish ~ river * distance_to_river_mouth, data = fish_data)
-# perform Anova on negative binomial model
-Anova(nb_schools2, type =2)
-# signficant effect of river
-# significant efefct of distance to river mouth
-# significant interaction between river and distance to river mouth
+# negative binomial model without random effect of transect_ID
+nb_schools2 <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | start_hour_fish)+ (1|date),
+                      data = fish_data,
+                      family = nbinom2
+)
+
+Anova(nb_schools2)
+# river significant ***
+# distance to river significant ***
+# interaction river x distance to river mouth significant *
 summary (nb_schools2)
+# variance start_hour = 0.08
+# variance data = 1.01
+
+# model with only date as random factor, transect_ID left out
+nb_schools3 <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1|date),
+                       data = fish_data,
+                       family = nbinom2
+)
+
+Anova(nb_schools3)
+# river significant ***
+# distance to river significant ***
+# interaction river x distance to river mouth significant *
+# compare models
+
+summary(nb_schools3)
+
+# compared models to decide which model is best
+AIC (nb_schools, nb_schools2, nb_schools3)
+anova(nb_schools, nb_schools2, nb_schools3)
+# prefer the simpler model so nb_schools3
 
 # pairwise comparison
 emm <- emmeans(nb_schools2, ~ river * distance_to_river_mouth, drop = TRUE)
@@ -208,6 +262,66 @@ plot_fish <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooli
 plot_fish
 
 
+emm2 <- emmeans(nb_schools3, ~ river * distance_to_river_mouth, drop = TRUE)
+pairs(emm2)
+
+# create letters
+cld_dist2 <- cld(emm2, Letters = letters)
+cld_dist2
+letters_df2 <- as.data.frame(cld_dist2)
+letters_df2 <- letters_df2 |>
+  mutate(y_pos = 100) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
+
+# make plot with significance letters
+plot_fish2 <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooling_fish, fill= river))+
+  geom_boxplot(position = position_dodge(width = 0.75))+
+  #facet_grid(~habitat_main)+
+  theme(text= element_text(size=14))+
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )+
+  geom_text(
+    data = letters_df2,
+    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE,
+    vjust=1.1
+  )+
+  labs(x= "Distance to river mouth", y="Dagaa school count / 500 m ")+
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"))
+plot_fish2
+
+
+
+
+
+
+
+
+
+
 # save the plot
 ggsave("plot small fish schools.png", plot_fish, width = 12, height = 6, dpi = 300)
 
@@ -220,89 +334,3 @@ nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (
 )
 summary(nb_schools)
 
-
-#### old model for small schools in papyrus transects ####
-school_pap <- fish_data |> 
-  filter(habitat_main == "Papyrus", fish_type == "Small schooling fish")
-school_pap$river <- as.factor(school_pap$river)
-school_pap$transect_ID <- as.factor(school_pap$transect_ID)
-
-# poisson model
-glmm_school_pap <- glmer(total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
-                         data = school_pap,
-                         family = poisson)
-summary(glmm_school_pap)
-# Robana lower school counts than Mbalageti
-# far from mouth significantly higher counts than mouth
-# boundary singular fit indicates that including transect as random effect has no function in the model
-# scaled residuals are large suggesting overdispersion
-
-# model without transect_ID as random effect
-glm_pap <- glm(total_count ~ river + distance_to_river_mouth, family = poisson, data = school_pap)
-summary(glm_pap)
-# Robana significantly lower than Mbalageti
-# far from river signifcantly higher school counts
-# checking for overdispersion --> residual variance/ degrees of freedom 210.45/ 21 = 10.02. normally a value close to 1 is acceptable because this would indicate that the standard variance of the mean is 1 and meets the assumption for poisson model. But since the value is 10.02 there is overdispersion
-# so try negative bionomial model
-
-# binomial model
-nb_papyrus <- glm.nb(total_count ~ river + distance_to_river_mouth, data = school_pap)
-summary(nb_papyrus)
-# Robana signifcantly lower number of schools than Mbalageti p<0.001
-# far from mouth higher p<0.05
-# residual variance is now 24.468 on 21 degrees of freedom, so this model looks better
-
-# make plot
-ggplot(school_pap, aes( x= distance_to_river_mouth, y= total_count, fill= river))+
-  geom_boxplot()+
-  theme(text= element_text(size=14))+
-  scale_y_log10()+
-  labs(y="School count / 500 m ", title="Papyrus")+
-  scale_fill_manual(values = c(
-    "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9"))
-
-
-#### old model for small schools in tree transects ####
-school_tree <- fish_data|>
-  filter(habitat_main == "Trees", fish_type == "Small schooling fish")
-
-glmm_school_tree <- glmer(total_count ~ river + distance_to_river_mouth + (1 | transect_ID),
-                          data = school_tree,
-                          family = poisson)
-summary(glmm_school_tree)
-# no difference between Robana and Mbalageti 
-# distance mid is signifcantly higher than mouth
-# no difference between far from mouth and mouth
-# variance from transect_ID is quite low so maybe not include in model
-# overdispersion ratio seems quite high 525/36
-
-# so try negative binomial model
-nb_trees <- glmer.nb(total_count ~ river + distance_to_river_mouth + (1 | transect_ID), data = school_tree)
-summary(nb_trees)
-# no significant difference between Robana and Mbalageti river
-# significant higher number of fish as mid distance compared to mouth
-# no significant difference between far and mouth
-# variance of transect_ID is 0 so suggest to leave out of the model
-
-nb_trees2 <- glm.nb(total_count ~ river + distance_to_river_mouth, data = school_tree)
-summary(nb_trees2)
-# residual deviance is 43.923 on 37 degrees of freedom, seems better fit
-# no significant difference between Robana en Mbalageti
-# significant effect of river mouth and mid
-# no significant effect of river mouth and far
-
-# pairwise comparison for distance to river mouth
-emm <- emmeans(nb_trees, pairwise ~ river * distance_to_river_mouth)
-emm
-
-# make plot
-ggplot(school_tree, aes(x= distance_to_river_mouth, y= total_count, fill= river))+
-  geom_boxplot()+
-  theme(text= element_text(size=14))+
-  scale_y_log10()+
-  labs(y="School count / 500 m ", title="Trees")+
-  scale_fill_manual(values = c(
-    "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9")
-  )
