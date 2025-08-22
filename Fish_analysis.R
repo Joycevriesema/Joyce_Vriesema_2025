@@ -10,7 +10,7 @@ library(glmmTMB)      # for negative binomial model including random effects
 library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
 library(car)          # for Anova test
-library(lubridate)
+library(lubridate)    # for date-time data
 
 
 # load fish data
@@ -64,6 +64,13 @@ fish_data <-read.csv("https://docs.google.com/spreadsheets/d/e/2PACX-1vRCwiQGeum
   values_from = total_count,
   names_prefix = "",
   values_fill = 0) 
+
+
+# change Mouth into Close to river mouth
+fish_data <- fish_data |>
+  mutate(distance_to_river_mouth =
+           fct_recode(distance_to_river_mouth, Close = "Mouth") |>
+           fct_relevel("Close","Mid","Far")) 
 
 # merge data with meta data
 # load data transect
@@ -145,9 +152,6 @@ glmm_schools <- glmer(Small_schooling_fish ~ river * distance_to_river_mouth + (
 
 summary(glmm_schools)
 # significantly lower school count at Robana river 
-# significantly higher school count at mid distance compared to mouth
-# significantly higher school count at far distance compared to mouth
-# little variance between transects
 
 # test the poisson model for overdispersion
 overdisp_fun <- function(glmm_schools) {
@@ -161,9 +165,10 @@ overdisp_fun <- function(glmm_schools) {
 }
 
 overdisp_fun(glmm_schools)
-# dispersion ratio = 420 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit
+# dispersion ratio = 420 is quite high and p<0.001 so this poisson model is highly overdispersed meaning that the variance in my real data is much higher than this poisson model can fit, so try negative binomial model
 
-# try negative binomial model 
+# negative binomial model with fixed effects of river and distance to river
+# random effects of date, time (start_time_fish) and transectID
 nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID)+ (1|date)+ (1|start_hour_fish),
   data = fish_data,
   family = nbinom2
@@ -176,41 +181,8 @@ summary(nb_schools)
 # variance of all random effects are really small
 # variance of transect ID and start_hour are very small
 
-# negative binomial model without random effect of transect_ID
-nb_schools2 <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | start_hour_fish)+ (1|date),
-                      data = fish_data,
-                      family = nbinom2
-)
-
-Anova(nb_schools2)
-# river significant ***
-# distance to river significant ***
-# interaction river x distance to river mouth significant *
-summary (nb_schools2)
-# variance start_hour = 0.08
-# variance data = 1.01
-
-# model with only date as random factor, transect_ID left out
-nb_schools3 <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1|date),
-                       data = fish_data,
-                       family = nbinom2
-)
-
-Anova(nb_schools3)
-# river significant ***
-# distance to river significant ***
-# interaction river x distance to river mouth significant *
-# compare models
-
-summary(nb_schools3)
-
-# compared models to decide which model is best
-AIC (nb_schools, nb_schools2, nb_schools3)
-anova(nb_schools, nb_schools2, nb_schools3)
-# prefer the simpler model so nb_schools3
-
 # pairwise comparison
-emm <- emmeans(nb_schools2, ~ river * distance_to_river_mouth, drop = TRUE)
+emm <- emmeans(nb_schools, ~ river * distance_to_river_mouth, drop = TRUE)
 pairs(emm)
 
 # create letters
@@ -255,82 +227,12 @@ plot_fish <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooli
     inherit.aes = FALSE,
     vjust=1.1
   )+
-  labs(x= "Distance to river mouth", y="School count / 500 m ")+
+  labs(x= "Distance to river mouth", y="Dagaa school count / 500 m ")+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"))
 plot_fish
 
 
-emm2 <- emmeans(nb_schools3, ~ river * distance_to_river_mouth, drop = TRUE)
-pairs(emm2)
-
-# create letters
-cld_dist2 <- cld(emm2, Letters = letters)
-cld_dist2
-letters_df2 <- as.data.frame(cld_dist2)
-letters_df2 <- letters_df2 |>
-  mutate(y_pos = 100) |>
-  mutate(group_label = gsub(" ", "", .group)) |>
-  ungroup() |>
-  drop_na()
-
-
-# make plot with significance letters
-plot_fish2 <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooling_fish, fill= river))+
-  geom_boxplot(position = position_dodge(width = 0.75))+
-  #facet_grid(~habitat_main)+
-  theme(text= element_text(size=14))+
-  theme_minimal(base_size = 14) +
-  theme(
-    axis.title = element_text(size = 13, face="bold"),
-    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
-    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
-    axis.text = element_text(size = 11),
-    legend.position = "right",
-    legend.title = element_text(size = 13, face = "bold"),
-    strip.text = element_text(size = 13, face = "bold"),
-    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
-    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
-    panel.grid.minor = element_blank(),
-    panel.spacing = unit(1.2, "lines"),
-    panel.border = element_rect(color = "black", size = 1, fill = NA),
-    plot.margin = margin(10, 10, 10, 10)
-  )+
-  geom_text(
-    data = letters_df2,
-    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
-    color = "black",
-    size = 4,
-    fontface = "bold",
-    position = position_dodge(width = 0.75),
-    inherit.aes = FALSE,
-    vjust=1.1
-  )+
-  labs(x= "Distance to river mouth", y="Dagaa school count / 500 m ")+
-  scale_fill_manual(values = c(
-    "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9"))
-plot_fish2
-
-
-
-
-
-
-
-
-
-
 # save the plot
 ggsave("plot small fish schools.png", plot_fish, width = 12, height = 6, dpi = 300)
-
-
-# model with random effects included of transect_ID,date,start_time, waves and water_green
-
-nb_schools <- glmmTMB(Small_schooling_fish ~ river * distance_to_river_mouth + (1 | transect_ID) + (1|date) + (1|waves) + (1|water_green)+ (1|start_time_fish),
-                      data = fish_data,
-                      family = nbinom2
-)
-summary(nb_schools)
-

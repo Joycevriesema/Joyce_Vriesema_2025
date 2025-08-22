@@ -1,18 +1,18 @@
 rm(list = ls())
 
 # load libraries
-library(tidyverse)  # includes dplyr, ggplot2
-library(vegan)      # multivariate analysis of ecological community data   
-library(psych)      # useful for panel plots of multivariate datasets
-library(ggrepel)    # label placement for ggplot2 to avoid overlapping text
-library(patchwork)  # combine multiple ggplot2 plots into one layout 
+library(tidyverse)    # includes dplyr, ggplot2
+library(vegan)        # multivariate analysis of ecological community data   
+library(psych)        # useful for panel plots of multivariate datasets
+library(ggrepel)      # label placement for ggplot2 to avoid overlapping text
+library(patchwork)    # combine multiple ggplot2 plots into one layout 
 library(lme4)         # for mixed models
 library(lmerTest)     # for tests of significance of mixed-effects models
 library(multcomp)     # registers cld() method for emmGrid
 library(multcompView) # generates the letters
 library(emmeans)      # pairwise comparison
 library(ellipse)      # drawing ellipses in plots
-library(lubridate)    # for day and time changes
+library(lubridate)    # for date-time data
 
 #### data preparation ####
 # load data_water
