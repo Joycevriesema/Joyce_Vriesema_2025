@@ -79,7 +79,11 @@ data_bird <- data_bird |>
     start_hour_bird = factor(hour(start_time_hms), levels = 7:12, ordered = TRUE)
   )
 
-
+# change Mouth into Close to river mouth
+data_bird <-data_bird |>
+  mutate(distance_to_river_mouth =
+           fct_recode(distance_to_river_mouth, Close = "Mouth") |>
+           fct_relevel("Close","Mid","Far")) 
 
 # save as csv file --> using for Structural Equation Modelling (SEM)
 write.csv(data_bird, "data_bird.csv", row.names = FALSE)
@@ -96,7 +100,7 @@ ggplot(data_bird, aes(x = distance_to_river_mouth, y = total_count, fill = river
     outlier.size = 2
   ) +
   facet_grid(~ habitat_main) +
-  scale_y_log10() +
+  #scale_y_log10() +
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
     "Robana" = "#56B4E9"
@@ -331,3 +335,93 @@ ggplot(birds_meter_shoreline, aes(x = distance_to_river_mouth, y = birds_per_100
     panel.border = element_rect(color = "black", size = 1, fill = NA),
     plot.margin = margin(10, 10, 10, 10)
   )
+
+
+#### count pied kingfishers per km shoreline corrected for tree compensation ####
+# load csv file of tree compensation
+tree_compensation <- read.csv("tree_compensation.csv")
+
+# merged with the bird data
+data_bird <- data_bird |>
+  left_join(tree_compensation, by= "transect_ID")
+
+# calculate the new pied kingfishers count per km shoreline corrected by the compensation factor
+
+data_bird_com <- data_bird |>
+  mutate(corrected_pied_count= (total_count / 0.5) / compensation_factor)
+
+# model
+data_bird_com <- data_bird_com |>
+  mutate(date_f  = factor(date))
+
+
+model <- lmer(
+  corrected_pied_count ~ habitat_main * river * distance_to_river_mouth + (1 | transect_ID) + (1 | date_f) + (1|weather) + (1|start_hour_bird),
+  data = data_bird_com, REML = TRUE
+)
+
+anova(model)
+# only interaction between habitat and distance to river mouth significant
+summary(model)
+
+emm3 <- emmeans(model, ~ river * distance_to_river_mouth * habitat_main, drop = TRUE)
+pairs(emm3)
+
+# create letters
+cld_dist3 <- cld(emm3, Letters = letters)
+cld_dist3
+letters_df3 <- as.data.frame(cld_dist3)
+letters_df3 <- letters_df3 |>
+  mutate(y_pos = 200) |>
+  mutate(group_label = gsub(" ", "", .group)) |>
+  ungroup() |>
+  drop_na()
+
+# explorative graph
+ggplot(data_bird_com, aes(x = distance_to_river_mouth, y = corrected_pied_count, fill = river)) +
+  geom_boxplot(
+    color = "black",    
+    outlier.shape = 21,    
+    outlier.fill = "black",
+    outlier.color = "black",
+    outlier.size = 2
+  ) +
+  scale_y_log10() +
+  facet_grid(~ habitat_main) +
+  scale_fill_manual(values = c(
+    "Mbalageti" = "#0072B2",
+    "Robana" = "#56B4E9"
+  ))+
+  labs(
+    x = "Distance to river mouth",
+    y = "Count / km shoreline",
+    fill = "river"
+  ) +
+  geom_text(
+    data = letters_df3,
+    aes(x = distance_to_river_mouth, y = y_pos, label = group_label, group= river),
+    color = "black",
+    size = 4,
+    fontface = "bold",
+    position = position_dodge(width = 0.75),
+    inherit.aes = FALSE
+  )+
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(size = 13, face="bold"),
+    axis.title.x = element_text(size = 13, face = "bold", margin = margin(t = 10)),
+    axis.text.x = element_text(size = 11, face = "bold", color="black"), 
+    axis.text = element_text(size = 11),
+    legend.position = "right",
+    legend.title = element_text(size = 13, face = "bold"),
+    strip.text = element_text(size = 13, face = "bold"),
+    panel.grid.major.x = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.major.y = element_line(color = "grey80", linetype = "solid"),
+    panel.grid.minor = element_blank(),
+    panel.spacing = unit(1.2, "lines"),
+    panel.border = element_rect(color = "black", size = 1, fill = NA),
+    plot.margin = margin(10, 10, 10, 10)
+  )
+
+# save as csv file --> using for Structural Equation Modelling (SEM)
+write.csv(data_bird_com, "data_bird_SEM.csv", row.names = FALSE)
