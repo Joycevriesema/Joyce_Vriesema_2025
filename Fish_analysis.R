@@ -230,9 +230,61 @@ plot_fish <- ggplot(fish_data, aes( x= distance_to_river_mouth, y= Small_schooli
   labs(x= "Distance to river mouth", y="Dagaa school count / 500 m ")+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9"))
+    "Robana" = "#56B4E9"),
+    labels = c(
+      "Mbalageti" = "Mbalageti",
+      "Robana"    = "Rubana" ))
 plot_fish
 
 
+# make combined plot fish and water turbidity
+p <- (plot2 + labs(x = NULL)) / (plot_fish + labs(x = NULL)) +
+  plot_layout(guides = "collect") & theme(legend.position = "right")
+
+xlab <- ggplot() + theme_void() +
+  annotate("text", x = 0.5, y = 0.5,
+           label = "Distance to river mouth",
+           fontface = "bold", size = 13 / .pt, hjust = 0.5, vjust = 0.5)
+combined_plot <- p / xlab + plot_layout(heights = c(1,1, 0.06))
+combined_plot
+
+
 # save the plot
-ggsave("plot small fish schools.png", plot_fish, width = 12, height = 6, dpi = 300)
+ggsave("fish+turbidity.png", combined_plot, width = 12, height = 10, dpi = 300)
+
+# make combined plot for fish and birds
+plot_birds_only <- plot_birds + labs(x = NULL) + theme(legend.position = "none")
+
+# 2) Keep ONLY the legend you want on fish (e.g., keep 'colour', hide others)
+plot_fish_only <- plot_fish + labs(x = NULL) +
+  guides(fill = "none", linetype = "none", shape = "none", alpha = "none") +
+  theme(legend.position = "right")   # middle-right of the fish panel
+
+# 3) Stack without collecting guides (so only fish’s legend shows)
+p2 <- plot_birds_only / plot_fish_only
+
+# 4) Add the shared x label
+xlab <- ggplot() + theme_void() +
+  annotate("text", x = 0.5, y = 0.5,
+           label = "Distance to river mouth",
+           fontface = "bold", size = 13 / .pt,
+           hjust = 0.5, vjust = 0.5)
+
+combined_plot2 <- p2 / xlab + plot_layout(heights = c(1, 1, 0.06))
+combined_plot2
+
+# save the plot
+ggsave("fish+pied.png", combined_plot2, width = 12, height = 10, dpi = 300)
+
+p3 <- (plot_birds + labs(x = NULL)) / (plot2 + labs(x = NULL)) +
+  plot_layout(guides = "collect") & theme(legend.position = "none")
+
+xlab <- ggplot() + theme_void() +
+  annotate("text", x = 0.5, y = 0.5,
+           label = "Distance to river mouth",
+           fontface = "bold", size = 13 / .pt, hjust = 0.5, vjust = 0.5)
+combined_plot3 <- p3 / xlab + plot_layout(heights = c(1,1, 0.06))
+combined_plot3
+
+# save the plot
+ggsave("turb+pied.png", combined_plot3, width = 12, height = 10, dpi = 300)

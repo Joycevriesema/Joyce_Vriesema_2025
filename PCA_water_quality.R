@@ -1,5 +1,6 @@
 rm(list = ls())
 
+
 # load libraries
 library(tidyverse)    # includes dplyr, ggplot2
 library(vegan)        # multivariate analysis of ecological community data   
@@ -278,9 +279,9 @@ ellipse_df <- scores %>%
 #loadings$nudge_x[loadings$varname == "TDS"] <- 0.5
 #loadings$nudge_x[loadings$varname == "conductivity"] <- -0.3
 loadings$nudge_x[loadings$varname == "turbidity"] <- -0.3
-loadings$nudge_x[loadings$varname == "temperature"] <- 0.1
+loadings$nudge_y[loadings$varname == "temperature"] <- 0.2
 #loadings$nudge_x[loadings$varname == "HDO"] <- 0.4
-#loadings$nudge_x[loadings$varname == "HDO_saturation"] <- 0.4
+loadings$nudge_y[loadings$varname == "HDO_saturation"] <- 0.6
 loadings$nudge_y[loadings$varname == "pH"] <- -0.1
 #loadings$nudge_y[loadings$varname == "ORP"] <- -0.1
 
@@ -310,7 +311,10 @@ ggplot(scores, aes(PC1, PC2)) +
   theme_minimal() +
   scale_color_manual(name = "River",
                      values = c("Mbalageti" = "#0072B2",
-                                "Robana"    = "#56B4E9")) +
+                                "Robana"    = "#56B4E9"),
+                     labels = c(
+                       "Mbalageti" = "Mbalageti",
+                       "Robana"    = "Rubana" )) +
   scale_linetype_manual(name = "Distance to river mouth",
                         values = c("Close" = "solid",
                                    "Mid"   = "dashed",
@@ -457,7 +461,10 @@ plot1 <- ggplot(pca_without_extra, aes(x = distance_to_river_mouth, y = PC1, fil
   )+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9"))+
+    "Robana" = "#56B4E9"),
+    labels = c(
+      "Mbalageti" = "Mbalageti",
+      "Robana"    = "Rubana" ))+
   theme_minimal(base_size = 14) +
   theme(
     axis.title = element_text(size = 13, face="bold"),
@@ -524,7 +531,10 @@ plot2 <- ggplot(pca_without_extra, aes(x = distance_to_river_mouth, y = PC2, fil
   )+
   scale_fill_manual(values = c(
     "Mbalageti" = "#0072B2",
-    "Robana" = "#56B4E9"))+
+    "Robana" = "#56B4E9"),
+    labels = c(
+      "Mbalageti" = "Mbalageti",
+      "Robana"    = "Rubana" ))+
   theme_minimal(base_size = 14) +
   theme(
     axis.title = element_text(size = 13, face="bold"),
